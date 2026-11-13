@@ -730,3 +730,17 @@ h2 {
     grid-template-columns: 1fr;
   }
 }
+
+.card-danger {
+  border-color: var(--red);
+  box-shadow: 0 0 0 3px var(--red-soft);
+}
+
+.card-danger p {
+  margin: 0 0 1rem;
+}
+
+.btn-danger-solid {
+  background: var(--red);
+  color: #fff;
+}

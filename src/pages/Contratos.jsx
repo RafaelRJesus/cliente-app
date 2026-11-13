@@ -117,6 +117,9 @@ function ListaContratos() {
 
 function DetalheContrato({ contrato }) {
   const { contratos } = useData()
+  const navigate = useNavigate()
+  const [confirmarExclusao, setConfirmarExclusao] = useState(false)
+  const [excluindo, setExcluindo] = useState(false)
   const [parcelaSelecionada, setParcelaSelecionada] = useState(null)
   const [dataPagamento, setDataPagamento] = useState(today())
   const [pagando, setPagando] = useState(false)
@@ -150,18 +153,68 @@ function DetalheContrato({ contrato }) {
     }
   }
 
+  async function excluir() {
+    setExcluindo(true)
+    try {
+      await contratos.remove(contrato.id)
+      navigate('/contratos', { replace: true })
+    } catch (err) {
+      console.error(err)
+      setMessage({ text: 'Erro ao excluir o contrato.', type: 'error' })
+      setExcluindo(false)
+    }
+  }
+
   return (
     <>
-      <header className="page-header">
-        <Link to="/contratos" className="back">
-          ← Contratos
-        </Link>
-        <h1>{contrato.clienteNome}</h1>
-        <p>
-          {nomeProduto(contrato)} · contrato {contrato.id.slice(0, 8).toUpperCase()} ·{' '}
-          <StatusBadge status={situacaoContrato(contrato, hoje)} />
-        </p>
+      <header className="page-header page-header-row">
+        <div>
+          <Link to="/contratos" className="back">
+            ← Contratos
+          </Link>
+          <h1>{contrato.clienteNome}</h1>
+          <p>
+            {nomeProduto(contrato)} · contrato {contrato.id.slice(0, 8).toUpperCase()} ·{' '}
+            <StatusBadge status={situacaoContrato(contrato, hoje)} />
+          </p>
+        </div>
+        {!confirmarExclusao && (
+          <button
+            type="button"
+            className="btn btn-danger"
+            onClick={() => setConfirmarExclusao(true)}
+          >
+            Excluir contrato
+          </button>
+        )}
       </header>
+
+      {confirmarExclusao && (
+        <section className="card card-danger" role="alert">
+          <h2>Excluir este contrato?</h2>
+          <p>
+            O contrato e o histórico de {pagas} parcela(s) paga(s) serão apagados. Essa
+            ação não pode ser desfeita.
+          </p>
+          <div className="actions">
+            <button
+              type="button"
+              className="btn btn-danger-solid"
+              onClick={excluir}
+              disabled={excluindo}
+            >
+              {excluindo ? 'Excluindo...' : 'Sim, excluir'}
+            </button>
+            <button
+              type="button"
+              className="btn btn-ghost"
+              onClick={() => setConfirmarExclusao(false)}
+            >
+              Cancelar
+            </button>
+          </div>
+        </section>
+      )}
 
       <Toast message={message} onClose={() => setMessage(null)} />
 

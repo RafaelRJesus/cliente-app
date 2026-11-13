@@ -1,5 +1,6 @@
 import { useState } from 'react'
-import { Link, useNavigate, useSearchParams } from 'react-router-dom'
+import { useNavigate, useSearchParams } from 'react-router-dom'
+import { BuscaCliente } from '../components/BuscaCliente'
 import { Field } from '../components/Field'
 import { ParcelasTable } from '../components/ParcelasTable'
 import { GarantiaImovel } from '../components/simulador/GarantiaImovel'
@@ -116,6 +117,10 @@ export function Simulador() {
       setErroContratar('Selecione o cliente para contratar.')
       return
     }
+    if (!cliente.numero) {
+      setErroContratar('Numere o cliente em Clientes antes de contratar.')
+      return
+    }
 
     setSalvando(true)
     try {
@@ -173,27 +178,15 @@ export function Simulador() {
           <div className="form">
             {equipe ? (
               <>
-                <Field
-                  label="Cliente"
-                  name="clienteId"
-                  as="select"
-                  value={form.clienteId}
-                  onChange={handleChange}
-                  error={erroContratar}
-                >
-                  <option value="">Selecione...</option>
-                  {clientes.items.map((c) => (
-                    <option key={c.id} value={c.id}>
-                      {c.nome} - {c.cpf}
-                    </option>
-                  ))}
-                </Field>
-                {clientes.items.length === 0 && (
-                  <p className="muted small">
-                    Nenhum cliente ainda. <Link to="/clientes">Cadastre um</Link> para
-                    contratar.
-                  </p>
-                )}
+                <BuscaCliente
+                  clientes={clientes.items}
+                  valor={form.clienteId}
+                  onChange={(clienteId) => {
+                    setForm((atual) => ({ ...atual, clienteId }))
+                    setErroContratar('')
+                  }}
+                  erro={erroContratar}
+                />
               </>
             ) : (
               <p className="muted small">

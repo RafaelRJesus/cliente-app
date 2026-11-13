@@ -63,3 +63,18 @@ export function lerNumero(value) {
   const n = Number(value)
   return Number.isFinite(n) ? n : null
 }
+
+const DATA_ISO = /^\d{4}-\d{2}-\d{2}$/
+const MES_ABREVIADO = /^([A-Za-zÀ-ú]{3})-(\d{4})$/
+
+// O Banco Central publica dois formatos de período:
+// semanal "2026-10-23 a 2026-10-29" e mensal "Set-2026".
+export function formatPeriodoReferencia(periodo) {
+  const datas = periodo.split(' a ')
+  if (datas.every((d) => DATA_ISO.test(d))) return datas.map(formatDate).join(' a ')
+
+  const mensal = periodo.match(MES_ABREVIADO)
+  if (mensal) return `${mensal[1].toLowerCase()}/${mensal[2]}`
+
+  return periodo
+}

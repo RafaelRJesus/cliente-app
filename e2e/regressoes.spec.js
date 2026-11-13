@@ -83,3 +83,45 @@ test.describe('celular', () => {
     })
   }
 })
+
+test('período da taxa do Banco Central aparece certo (semanal e mensal)', async ({
+  page,
+}) => {
+  await page.unroute('**/olinda.bcb.gov.br/**')
+  await page.route('**/olinda.bcb.gov.br/**', (route) => {
+    const url = decodeURIComponent(route.request().url())
+    const ultimo = url.includes('$top=1&')
+    let value
+    if (url.includes('TaxasJurosDiariaPorInicioPeriodo')) {
+      value = ultimo
+        ? [{ InicioPeriodo: '2026-10-23', FimPeriodo: '2026-10-29' }]
+        : [
+            {
+              Modalidade: 'Crédito pessoal não consignado - Prefixado',
+              TaxaJurosAoMes: 5.13,
+            },
+          ]
+    } else {
+      value = ultimo
+        ? [{ anoMes: '2026-09', Mes: 'Set-2026' }]
+        : [
+            {
+              Modalidade: 'Financiamento imobiliário com taxas de mercado - Prefixado',
+              TaxaJurosAoMes: 1.17,
+            },
+          ]
+    }
+    return route.fulfill({
+      contentType: 'application/json',
+      headers: { 'access-control-allow-origin': '*' },
+      body: JSON.stringify({ value }),
+    })
+  })
+
+  await page.goto('/simulador')
+  await expect(page.locator('.referencia')).toContainText('23/10/2026 a 29/10/2026')
+
+  await page.getByRole('tab', { name: /Garantia de imóvel/ }).click()
+  await expect(page.locator('.referencia')).toContainText('Banco Central, set/2026')
+  await expect(page.locator('.referencia')).not.toContainText('01/01/2026')
+})

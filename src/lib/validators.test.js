@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest'
 import { nomeAno, parseValorFipe } from './api/fipe'
-import { lerNumero, maskCpf, maskPhone } from './format'
+import { formatPeriodoReferencia, lerNumero, maskCpf, maskPhone } from './format'
 import { isValidCpf, validateCliente } from './validators'
 
 describe('isValidCpf', () => {
@@ -89,5 +89,16 @@ describe('tamanho máximo dos campos do cliente', () => {
       uf: 'SP',
     })
     expect(erros).toEqual({ nome: 'Máximo de 120 caracteres.' })
+  })
+})
+
+describe('formatPeriodoReferencia (rótulo das taxas do Banco Central)', () => {
+  it.each([
+    ['2026-10-23 a 2026-10-29', '23/10/2026 a 29/10/2026'],
+    ['Set-2026', 'set/2026'],
+    ['Dez-2025', 'dez/2025'],
+    ['qualquer outra coisa', 'qualquer outra coisa'],
+  ])('%s -> %s', (periodo, esperado) => {
+    expect(formatPeriodoReferencia(periodo)).toBe(esperado)
   })
 })

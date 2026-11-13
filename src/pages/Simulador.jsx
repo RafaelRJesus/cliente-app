@@ -7,7 +7,13 @@ import { GarantiaVeiculo } from '../components/simulador/GarantiaVeiculo'
 import { useData } from '../context/DataContext'
 import { useTaxasMercado } from '../hooks/useTaxasMercado'
 import { simular } from '../lib/credito'
-import { formatDate, formatMoney, formatPercent, lerNumero, today } from '../lib/format'
+import {
+  formatMoney,
+  formatPercent,
+  formatPeriodoReferencia,
+  lerNumero,
+  today,
+} from '../lib/format'
 import { PRODUTOS, referenciaBcb, validarProduto } from '../lib/produtos'
 import { isValidPlaca } from '../lib/validators'
 
@@ -397,10 +403,7 @@ function ReferenciaMercado({ mercado, referencia, obs, taxaManual, onUsar }) {
   return (
     <div className="referencia">
       <span>
-        Mercado (Banco Central,{' '}
-        {referencia.periodo.includes('-')
-          ? formatPeriodo(referencia.periodo)
-          : referencia.periodo}
+        Mercado (Banco Central, {formatPeriodoReferencia(referencia.periodo)}
         ): mediana <strong>{taxaBr(referencia.mediana)}% a.m.</strong> entre{' '}
         {referencia.instituicoes} instituições · menor {taxaBr(referencia.menor)}% · maior{' '}
         {taxaBr(referencia.maior)}%
@@ -416,12 +419,6 @@ function ReferenciaMercado({ mercado, referencia, obs, taxaManual, onUsar }) {
 }
 
 const taxaBr = (n) => n.toLocaleString('pt-BR', { minimumFractionDigits: 2 })
-
-const formatPeriodo = (periodo) =>
-  periodo
-    .split(' a ')
-    .map((d) => formatDate(d))
-    .join(' a ')
 
 function detalhesDoProduto(form, garantia, params) {
   if (form.produto === 'consignado') {

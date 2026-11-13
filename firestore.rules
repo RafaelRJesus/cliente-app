@@ -22,14 +22,17 @@ service cloud.firestore {
       return signedIn() && exists(/databases/$(database)/documents/usuarios/$(request.auth.uid));
     }
 
+    // Admin só vale com sessão aberta pelo Google (protegida pelo 2FA da conta
+    // Google): uma senha vazada não dá acesso de admin.
     function isAdmin() {
-      return temPerfil() && usuario().papel == 'admin';
+      return temPerfil() && usuario().papel == 'admin'
+        && request.auth.token.firebase.sign_in_provider == 'google.com';
     }
 
     // admin ou gestor: enxergam a carteira inteira. O gestor perde o acesso
     // quando o admin apaga o convite dele.
     function isEquipe() {
-      return temPerfil() && (usuario().papel == 'admin'
+      return temPerfil() && (isAdmin()
         || (usuario().papel == 'gestor'
           && exists(/databases/$(database)/documents/gestores/$(request.auth.token.email))));
     }

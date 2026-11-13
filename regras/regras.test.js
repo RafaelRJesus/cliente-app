@@ -65,8 +65,16 @@ const contrato = (clienteId, criadoPor, extra = {}) => ({
   ...extra,
 })
 
-const conta = (uid, email, verificado = true) =>
-  env.authenticatedContext(uid, { email, email_verified: verificado }).firestore()
+const conta = (uid, email, verificado = true, provedor = 'password') =>
+  env
+    .authenticatedContext(uid, {
+      email,
+      email_verified: verificado,
+      firebase: { sign_in_provider: provedor },
+    })
+    .firestore()
+
+const admin = (provedor = 'google.com') => conta('admin', 'admin@rj.test', true, provedor)
 
 const CPF_MARIA = '52998224725'
 const CPF_JOAO = '11144477735'
@@ -133,7 +141,7 @@ describe('sem login', () => {
 
 describe('admin', () => {
   it('cadastra e remove gestor', async () => {
-    const db = conta('admin', 'admin@rj.test')
+    const db = admin()
     await assertSucceeds(
       setDoc(doc(db, 'gestores/novo@rj.test'), { nome: 'Novo', criadoEm: agora }),
     )
@@ -141,8 +149,16 @@ describe('admin', () => {
     await assertSucceeds(deleteDoc(doc(db, 'gestores/novo@rj.test')))
   })
 
+  it('com senha não tem poder de admin, só com Google', async () => {
+    const db = admin('password')
+    await assertFails(getDocs(collection(db, 'clientes')))
+    await assertFails(
+      setDoc(doc(db, 'gestores/novo@rj.test'), { nome: 'Novo', criadoEm: agora }),
+    )
+  })
+
   it('vê a carteira inteira', async () => {
-    const db = conta('admin', 'admin@rj.test')
+    const db = admin()
     await assertSucceeds(getDocs(collection(db, 'clientes')))
     await assertSucceeds(getDocs(collection(db, 'contratos')))
   })
@@ -210,7 +226,7 @@ describe('gestor', () => {
   })
 
   it('perde o acesso quando o admin remove o convite', async () => {
-    await deleteDoc(doc(conta('admin', 'admin@rj.test'), 'gestores/gestor@rj.test'))
+    await deleteDoc(doc(admin(), 'gestores/gestor@rj.test'))
     await assertFails(getDocs(collection(db(), 'clientes')))
     await assertFails(getDoc(doc(db(), 'contratos/do-joao')))
   })

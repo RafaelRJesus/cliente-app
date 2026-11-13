@@ -2,25 +2,60 @@ rules_version = '2';
 
 service cloud.firestore {
   match /databases/{database}/documents {
-    // Cada usuário (login anônimo) só lê, cria e apaga os próprios clientes.
-    match /clientes/{clienteId} {
-      allow read, delete: if request.auth != null
-        && resource.data.uid == request.auth.uid;
 
-      allow create: if request.auth != null
-        && request.resource.data.uid == request.auth.uid
-        && request.resource.data.nome is string
-        && request.resource.data.nome.size() > 0
-        && request.resource.data.nome.size() <= 120
-        && request.resource.data.email is string
-        && request.resource.data.email.size() <= 160
-        && request.resource.data.telefone is string
-        && request.resource.data.telefone.size() <= 30
+    function signedIn() {
+      return request.auth != null;
+    }
+
+    function isOwner() {
+      return signedIn() && resource.data.uid == request.auth.uid;
+    }
+
+    function createsAsOwner() {
+      return signedIn() && request.resource.data.uid == request.auth.uid;
+    }
+
+    function stringField(name, maxSize) {
+      return request.resource.data[name] is string
+        && request.resource.data[name].size() <= maxSize;
+    }
+
+    match /clientes/{id} {
+      allow read, delete: if isOwner();
+
+      allow create: if createsAsOwner()
         && request.resource.data.keys().hasOnly(
-          ['uid', 'nome', 'email', 'telefone', 'cpf', 'endereco', 'criadoEm']
-        );
+          ['uid', 'nome', 'email', 'telefone', 'cpf', 'endereco', 'criadoEm'])
+        && stringField('nome', 120)
+        && request.resource.data.nome.size() > 0
+        && stringField('email', 160)
+        && stringField('telefone', 20)
+        && stringField('cpf', 14)
+        && stringField('endereco', 300);
 
       allow update: if false;
+    }
+
+    match /contratos/{id} {
+      allow read, delete: if isOwner();
+
+      allow create: if createsAsOwner()
+        && request.resource.data.keys().hasOnly([
+          'uid', 'clienteId', 'clienteNome', 'valor', 'taxaMensal', 'prazo',
+          'sistema', 'dataContratacao', 'iof', 'cetMensal', 'parcelas', 'criadoEm'])
+        && request.resource.data.valor is number
+        && request.resource.data.valor > 0
+        && request.resource.data.valor <= 1000000
+        && request.resource.data.prazo is int
+        && request.resource.data.prazo <= 120
+        && request.resource.data.sistema in ['PRICE', 'SAC']
+        && request.resource.data.parcelas is list
+        && request.resource.data.parcelas.size() == request.resource.data.prazo;
+
+      // Só o cronograma de parcelas muda (registro de pagamento).
+      allow update: if isOwner()
+        && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['parcelas'])
+        && request.resource.data.parcelas.size() == resource.data.parcelas.size();
     }
 
     match /{document=**} {

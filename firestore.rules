@@ -9,12 +9,34 @@ service cloud.firestore {
       return request.auth != null;
     }
 
-    function isOwner() {
-      return signedIn() && resource.data.uid == request.auth.uid;
+    // E-mail confirmado: sem isso qualquer um criaria conta com o e-mail de outra pessoa.
+    function emailConfirmado() {
+      return signedIn() && request.auth.token.email_verified == true;
     }
 
-    function createsAsOwner() {
-      return signedIn() && request.resource.data.uid == request.auth.uid;
+    function usuario() {
+      return get(/databases/$(database)/documents/usuarios/$(request.auth.uid)).data;
+    }
+
+    function temPerfil() {
+      return signedIn() && exists(/databases/$(database)/documents/usuarios/$(request.auth.uid));
+    }
+
+    function isAdmin() {
+      return temPerfil() && usuario().papel == 'admin';
+    }
+
+    // admin ou gestor: enxergam a carteira inteira
+    function isEquipe() {
+      return temPerfil() && usuario().papel in ['admin', 'gestor'];
+    }
+
+    function meuClienteId() {
+      return usuario().clienteId;
+    }
+
+    function isClienteDono(clienteId) {
+      return temPerfil() && usuario().papel == 'cliente' && meuClienteId() == clienteId;
     }
 
     function stringField(name, maxSize) {
@@ -80,33 +102,86 @@ service cloud.firestore {
         && parcelaValida(parcelas[parcelas.size() - 1]);
     }
 
-    match /clientes/{id} {
-      allow read, delete: if isOwner();
+    // Perfil de acesso. Admin é criado à mão no console; ninguém se promove.
+    match /usuarios/{uid} {
+      allow read: if signedIn() && (request.auth.uid == uid || isAdmin());
 
-      allow create: if createsAsOwner()
+      allow create: if emailConfirmado()
+        && request.auth.uid == uid
+        && request.resource.data.email == request.auth.token.email
+        && stringField('nome', 120)
+        && stringField('criadoEm', 30)
+        && (
+          // gestor: o admin precisa ter cadastrado esse e-mail antes
+          (request.resource.data.keys().hasOnly(['papel', 'email', 'nome', 'criadoEm'])
+            && request.resource.data.papel == 'gestor'
+            && exists(/databases/$(database)/documents/gestores/$(request.auth.token.email)))
+          ||
+          // cliente: o cadastro com esse CPF precisa ter o mesmo e-mail da conta
+          (request.resource.data.keys().hasOnly(['papel', 'email', 'nome', 'clienteId', 'criadoEm'])
+            && request.resource.data.papel == 'cliente'
+            && request.resource.data.clienteId is string
+            && get(/databases/$(database)/documents/clientes/$(request.resource.data.clienteId)).data.email
+              == request.auth.token.email)
+        );
+
+      allow update, delete: if false;
+    }
+
+    // Convites de gestor, pelo e-mail. Só o admin mexe.
+    match /gestores/{email} {
+      allow read: if isAdmin() || (signedIn() && request.auth.token.email == email);
+      allow create: if isAdmin()
+        && request.resource.data.keys().hasOnly(['nome', 'criadoEm'])
+        && stringField('nome', 120)
+        && stringField('criadoEm', 30)
+        && email.size() <= 160;
+      allow delete: if isAdmin();
+      allow update: if false;
+    }
+
+    // O id do documento é o CPF só com números: garante um cadastro por CPF.
+    match /clientes/{cpf} {
+      allow read: if isEquipe() || isClienteDono(cpf);
+      allow delete: if isEquipe();
+
+      allow create: if signedIn()
+        && cpf.matches('^[0-9]{11}$')
+        && request.resource.data.cpf is string
+        && request.resource.data.cpf.replace('[^0-9]', '') == cpf
         && request.resource.data.keys().hasOnly(
-          ['uid', 'nome', 'email', 'telefone', 'cpf', 'endereco', 'criadoEm'])
+          ['nome', 'email', 'telefone', 'cpf', 'endereco', 'criadoEm', 'criadoPor'])
+        && request.resource.data.criadoPor == request.auth.uid
         && stringField('nome', 120)
         && request.resource.data.nome.size() > 0
         && stringField('email', 160)
         && stringField('telefone', 20)
         && stringField('cpf', 14)
         && stringField('criadoEm', 30)
-        && enderecoValido(request.resource.data.endereco);
+        && enderecoValido(request.resource.data.endereco)
+        && (
+          isEquipe()
+          // cliente se cadastrando: só com o próprio e-mail, já confirmado
+          || (emailConfirmado() && !temPerfil()
+            && request.resource.data.email == request.auth.token.email)
+        );
 
       allow update: if false;
     }
 
     match /contratos/{id} {
-      allow read, delete: if isOwner();
+      allow read: if isEquipe() || isClienteDono(resource.data.clienteId);
+      allow delete: if isEquipe();
 
-      allow create: if createsAsOwner()
+      allow create: if isEquipe()
         && request.resource.data.keys().hasOnly([
-          'uid', 'clienteId', 'clienteNome', 'produto', 'detalhes', 'valor',
+          'clienteId', 'clienteNome', 'produto', 'detalhes', 'valor',
           'taxaMensal', 'prazo', 'sistema', 'dataContratacao', 'iof', 'cetMensal',
-          'parcelas', 'criadoEm'])
+          'parcelas', 'criadoEm', 'criadoPor'])
+        && request.resource.data.criadoPor == request.auth.uid
+        && exists(/databases/$(database)/documents/clientes/$(request.resource.data.clienteId))
         && request.resource.data.produto in ['pessoal', 'consignado', 'veiculo', 'imovel', 'pix']
-        && stringField('clienteId', 40)
+        && stringField('clienteId', 11)
         && stringField('clienteNome', 120)
         && stringField('dataContratacao', 10)
         && stringField('criadoEm', 30)
@@ -123,8 +198,8 @@ service cloud.firestore {
         && request.resource.data.sistema in ['PRICE', 'SAC']
         && parcelasValidas(request.resource.data.parcelas, request.resource.data.prazo);
 
-      // Só o cronograma muda (registro de pagamento), mantendo o formato.
-      allow update: if isOwner()
+      // Pagamento: só o cronograma muda, pela equipe ou pelo próprio cliente.
+      allow update: if (isEquipe() || isClienteDono(resource.data.clienteId))
         && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['parcelas'])
         && parcelasValidas(request.resource.data.parcelas, resource.data.prazo);
     }

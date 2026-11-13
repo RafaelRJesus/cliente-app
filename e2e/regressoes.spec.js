@@ -125,3 +125,18 @@ test('período da taxa do Banco Central aparece certo (semanal e mensal)', async
   await expect(page.locator('.referencia')).toContainText('Banco Central, set/2026')
   await expect(page.locator('.referencia')).not.toContainText('01/01/2026')
 })
+
+test('pagamento registra a forma escolhida e mostra na parcela', async ({ page }) => {
+  await cadastrarCliente(page)
+  await contratar(page)
+
+  await page.getByRole('button', { name: 'Pagar' }).first().click()
+  const formas = page.getByRole('group', { name: 'Forma de pagamento' })
+  await expect(formas.getByRole('radio')).toHaveCount(5)
+  await expect(formas.getByRole('radio', { name: 'Pix' })).toBeChecked()
+  await formas.getByRole('radio', { name: 'Dinheiro' }).check()
+  await page.getByRole('button', { name: 'Confirmar pagamento' }).click()
+
+  await expect(page.locator('.toast')).toContainText('Parcela 1 paga (Dinheiro).')
+  await expect(page.locator('tbody tr').first()).toContainText('Dinheiro')
+})

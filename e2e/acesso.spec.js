@@ -127,8 +127,12 @@ test('cliente pré-cadastrado vê só os próprios contratos e pode pagar', asyn
   await page.locator('a.row-link').click()
   await expect(page.getByRole('button', { name: 'Excluir contrato' })).toHaveCount(0)
   await page.getByRole('button', { name: 'Pagar' }).first().click()
+  // cliente não registra pagamento em dinheiro (é só no balcão)
+  const formas = page.getByRole('group', { name: 'Forma de pagamento' })
+  await expect(formas.getByRole('radio', { name: 'Dinheiro' })).toHaveCount(0)
+  await expect(formas.getByRole('radio')).toHaveCount(4)
   await page.getByRole('button', { name: 'Confirmar pagamento' }).click()
-  await expect(page.getByText('Parcela 1 paga.')).toBeVisible()
+  await expect(page.getByText('Parcela 1 paga (Pix).')).toBeVisible()
 
   await page.goto('/simulador')
   await expect(page.getByText('Para contratar, fale com seu gestor.')).toBeVisible()

@@ -31,7 +31,9 @@ service cloud.firestore {
         && stringField('email', 160)
         && stringField('telefone', 20)
         && stringField('cpf', 14)
-        && stringField('endereco', 300);
+        && request.resource.data.endereco is map
+        && request.resource.data.endereco.keys().hasOnly(
+          ['cep', 'logradouro', 'numero', 'complemento', 'bairro', 'cidade', 'uf']);
 
       allow update: if false;
     }
@@ -41,13 +43,16 @@ service cloud.firestore {
 
       allow create: if createsAsOwner()
         && request.resource.data.keys().hasOnly([
-          'uid', 'clienteId', 'clienteNome', 'valor', 'taxaMensal', 'prazo',
-          'sistema', 'dataContratacao', 'iof', 'cetMensal', 'parcelas', 'criadoEm'])
+          'uid', 'clienteId', 'clienteNome', 'produto', 'detalhes', 'valor',
+          'taxaMensal', 'prazo', 'sistema', 'dataContratacao', 'iof', 'cetMensal',
+          'parcelas', 'criadoEm'])
+        && request.resource.data.produto in ['pessoal', 'consignado', 'veiculo', 'imovel', 'pix']
+        && request.resource.data.detalhes is map
         && request.resource.data.valor is number
         && request.resource.data.valor > 0
-        && request.resource.data.valor <= 1000000
+        && request.resource.data.valor <= 2000000
         && request.resource.data.prazo is int
-        && request.resource.data.prazo <= 120
+        && request.resource.data.prazo <= 240
         && request.resource.data.sistema in ['PRICE', 'SAC']
         && request.resource.data.parcelas is list
         && request.resource.data.parcelas.size() == request.resource.data.prazo;

@@ -50,7 +50,8 @@ h2 {
 
 .shell {
   display: grid;
-  grid-template-columns: 240px 1fr;
+  /* minmax(0, 1fr): sem isso a tabela de parcelas alarga a página no celular */
+  grid-template-columns: 240px minmax(0, 1fr);
   min-height: 100vh;
 }
 
@@ -128,6 +129,7 @@ h2 {
 }
 
 .content {
+  min-width: 0;
   padding: 2rem clamp(1rem, 3vw, 2.5rem) 3rem;
   max-width: 1200px;
   width: 100%;
@@ -138,7 +140,7 @@ h2 {
 
 @media (max-width: 800px) {
   .shell {
-    grid-template-columns: 1fr;
+    grid-template-columns: minmax(0, 1fr);
   }
 
   .sidebar {
@@ -182,6 +184,11 @@ h2 {
   margin-bottom: 0.5rem;
   font-size: 0.875rem;
   text-decoration: none;
+}
+
+.grid-2 > *,
+.grid-sim > * {
+  min-width: 0;
 }
 
 .grid-2,

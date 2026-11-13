@@ -110,3 +110,10 @@ describe('situacaoContrato', () => {
     expect(situacaoContrato(contrato, '2026-03-01')).toBe('em dia')
   })
 })
+
+describe('atraso com data inválida', () => {
+  it.each(['', null, undefined, 'abc'])('ignora encargos quando a data é %p', (data) => {
+    const r = calcularAtraso({ valor: 1000, vencimento: '2026-03-10' }, data)
+    expect(r).toEqual({ dias: 0, multa: 0, juros: 0, total: 1000 })
+  })
+})

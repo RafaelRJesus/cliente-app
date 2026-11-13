@@ -56,3 +56,10 @@ export function maskPlaca(value) {
     .slice(0, 7)
   return placa.length > 3 ? `${placa.slice(0, 3)}-${placa.slice(3)}` : placa
 }
+
+// Campo de formulário -> número. Vazio ou inválido vira null (nunca 0).
+export function lerNumero(value) {
+  if (value == null || String(value).trim() === '') return null
+  const n = Number(value)
+  return Number.isFinite(n) ? n : null
+}

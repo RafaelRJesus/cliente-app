@@ -120,7 +120,8 @@ export function validarProduto(
     errors.prazo = `De 1 a ${regra.prazoMax} meses.`
   }
 
-  if (!(taxa >= 0 && taxa <= 20)) errors.taxa = 'Entre 0% e 20% a.m.'
+  if (taxa == null) errors.taxa = 'Informe a taxa.'
+  else if (!(taxa >= 0 && taxa <= 20)) errors.taxa = 'Entre 0% e 20% a.m.'
 
   if (produto === 'consignado') {
     if (!(consignado.renda > 0)) errors.renda = 'Informe a renda líquida.'

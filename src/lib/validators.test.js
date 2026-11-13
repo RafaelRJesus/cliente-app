@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest'
 import { nomeAno, parseValorFipe } from './api/fipe'
-import { maskCpf, maskPhone } from './format'
+import { lerNumero, maskCpf, maskPhone } from './format'
 import { isValidCpf, validateCliente } from './validators'
 
 describe('isValidCpf', () => {
@@ -58,5 +58,19 @@ describe('nomeAno', () => {
   it('mostra "Zero km" no lugar do ano 32000 da FIPE', () => {
     expect(nomeAno({ codigo: '32000-5', nome: '32000 Flex' }).nome).toBe('Zero km Flex')
     expect(nomeAno({ codigo: '2021-5', nome: '2021 Flex' }).nome).toBe('2021 Flex')
+  })
+})
+
+describe('lerNumero', () => {
+  it.each([
+    ['', null],
+    ['   ', null],
+    [null, null],
+    ['abc', null],
+    ['0', 0],
+    ['2.5', 2.5],
+    ['10000', 10000],
+  ])('%p -> %p', (entrada, saida) => {
+    expect(lerNumero(entrada)).toBe(saida)
   })
 })

@@ -7,7 +7,7 @@ import { GarantiaVeiculo } from '../components/simulador/GarantiaVeiculo'
 import { useData } from '../context/DataContext'
 import { useTaxasMercado } from '../hooks/useTaxasMercado'
 import { simular } from '../lib/credito'
-import { formatDate, formatMoney, formatPercent, today } from '../lib/format'
+import { formatDate, formatMoney, formatPercent, lerNumero, today } from '../lib/format'
 import { PRODUTOS, referenciaBcb, validarProduto } from '../lib/produtos'
 import { isValidPlaca } from '../lib/validators'
 
@@ -36,11 +36,11 @@ export function Simulador() {
   const regra = PRODUTOS[form.produto]
   const referencia = mercado.taxas?.[referenciaBcb(form.produto, form.convenio)]
   const taxaSugerida = referencia?.mediana ?? regra.taxaPadrao
-  const taxa = taxaManual ? Number(form.taxa) : taxaSugerida
+  const taxa = taxaManual ? lerNumero(form.taxa) : taxaSugerida
 
   const params = {
-    valor: Number(form.valor),
-    prazo: Number(form.prazo),
+    valor: lerNumero(form.valor),
+    prazo: lerNumero(form.prazo),
     taxa,
     dataContratacao: form.dataContratacao,
   }
@@ -49,8 +49,9 @@ export function Simulador() {
     params.valor > 0 &&
     Number.isInteger(params.prazo) &&
     params.prazo > 0 &&
+    taxa != null &&
     taxa >= 0 &&
-    form.dataContratacao
+    Boolean(form.dataContratacao)
   const resultado = parametrosBasicosOk
     ? simular({
         valor: params.valor,
@@ -71,7 +72,7 @@ export function Simulador() {
       ...garantia,
       valorImovel: Number(garantia.valorImovel) || undefined,
     },
-    consignado: { renda: Number(form.renda) },
+    consignado: { renda: lerNumero(form.renda) },
   })
   if (form.produto === 'veiculo' && !isValidPlaca(garantia.placa)) {
     errors.placa = 'Informe uma placa válida.'

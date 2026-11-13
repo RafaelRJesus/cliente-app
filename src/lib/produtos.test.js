@@ -78,3 +78,10 @@ describe('placa', () => {
     expect(maskCep('01001000')).toBe('01001-000')
   })
 })
+
+describe('campos não preenchidos', () => {
+  it('exige a taxa quando o campo está vazio', () => {
+    const erros = validarProduto({ ...base, produto: 'pessoal', taxa: null })
+    expect(erros.taxa).toBe('Informe a taxa.')
+  })
+})

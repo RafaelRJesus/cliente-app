@@ -103,9 +103,14 @@ export function simular({ valor, taxaMensal, prazo, sistema, dataContratacao }) 
   }
 }
 
+const DATA_ISO = /^\d{4}-\d{2}-\d{2}$/
+
 export function calcularAtraso(parcela, dataPagamento) {
+  const semEncargos = { dias: 0, multa: 0, juros: 0, total: parcela.valor }
+  if (!DATA_ISO.test(dataPagamento ?? '')) return semEncargos
+
   const dias = diffDays(parcela.vencimento, dataPagamento)
-  if (dias <= 0) return { dias: 0, multa: 0, juros: 0, total: parcela.valor }
+  if (dias <= 0) return semEncargos
 
   const multa = round2(parcela.valor * MULTA_ATRASO)
   const juros = round2(parcela.valor * (JUROS_MORA_MES / 30) * dias)

@@ -55,7 +55,7 @@ export function Entrar() {
       </p>
       {storageMode === 'local' && (
         <p className="muted small">
-          Modo local (sem Firebase): admin {ADMIN_LOCAL.email} / {ADMIN_LOCAL.senha}
+          Modo local (sem Firebase): entre com {ADMIN_LOCAL.email} / {ADMIN_LOCAL.senha}
         </p>
       )}
     </AcessoLayout>

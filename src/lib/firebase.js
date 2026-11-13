@@ -11,7 +11,10 @@ const config = {
   appId: import.meta.env.VITE_FIREBASE_APP_ID,
 }
 
-export const firebaseEnabled = Boolean(config.apiKey && config.projectId)
+// No build dos testes de tela (--mode e2e) o app nunca fala com o Firebase,
+// mesmo que exista um .env.local na máquina.
+export const firebaseEnabled =
+  import.meta.env.MODE !== 'e2e' && Boolean(config.apiKey && config.projectId)
 
 const app = firebaseEnabled ? initializeApp(config) : null
 export const db = app ? getFirestore(app) : null

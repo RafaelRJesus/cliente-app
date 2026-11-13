@@ -1,4 +1,5 @@
 import { formatDate, formatMoney } from '../lib/format'
+import { nomeFormaPagamento } from '../lib/pagamento'
 import { StatusBadge } from './StatusBadge'
 
 export function ParcelasTable({ parcelas, hoje, onPagar }) {
@@ -37,6 +38,7 @@ export function ParcelasTable({ parcelas, hoje, onPagar }) {
                       <span className="muted small">
                         {' '}
                         {formatDate(p.pagaEm)} · {formatMoney(p.valorPago)}
+                        {p.formaPagamento && ` · ${nomeFormaPagamento(p.formaPagamento)}`}
                       </span>
                     )}
                   </td>

@@ -11,6 +11,7 @@ import { useData } from '../context/DataContext'
 import { carteiraPorCliente, totaisDosContratos } from '../lib/carteira'
 import { calcularAtraso, saldoDevedor, situacaoContrato } from '../lib/credito'
 import { formatDate, formatMoney, formatPercent, today } from '../lib/format'
+import { formasPara, nomeFormaPagamento } from '../lib/pagamento'
 import { nomeProduto } from '../lib/produtos'
 
 export function Contratos() {
@@ -168,6 +169,7 @@ function DetalheContrato({ contrato }) {
   const [excluindo, setExcluindo] = useState(false)
   const [parcelaSelecionada, setParcelaSelecionada] = useState(null)
   const [dataPagamento, setDataPagamento] = useState(today())
+  const [formaPagamento, setFormaPagamento] = useState('pix')
   const [pagando, setPagando] = useState(false)
   const [message, setMessage] = useState(null)
 
@@ -178,6 +180,7 @@ function DetalheContrato({ contrato }) {
   function abrirPagamento(parcela) {
     setParcelaSelecionada(parcela)
     setDataPagamento(today())
+    setFormaPagamento('pix')
   }
 
   async function confirmarPagamento() {
@@ -185,11 +188,13 @@ function DetalheContrato({ contrato }) {
     try {
       const parcelas = contrato.parcelas.map((p) =>
         p.numero === parcelaSelecionada.numero
-          ? { ...p, pagaEm: dataPagamento, valorPago: atraso.total }
+          ? { ...p, pagaEm: dataPagamento, valorPago: atraso.total, formaPagamento }
           : p,
       )
       await contratos.update(contrato.id, { parcelas })
-      setMessage({ text: `Parcela ${parcelaSelecionada.numero} paga.` })
+      setMessage({
+        text: `Parcela ${parcelaSelecionada.numero} paga (${nomeFormaPagamento(formaPagamento)}).`,
+      })
       setParcelaSelecionada(null)
     } catch (err) {
       console.error(err)
@@ -280,15 +285,35 @@ function DetalheContrato({ contrato }) {
         <section className="card card-highlight">
           <h2>Pagamento da parcela {parcelaSelecionada.numero}</h2>
           <div className="pay">
-            <div className="field">
-              <label htmlFor="dataPagamento">Data do pagamento</label>
-              <input
-                id="dataPagamento"
-                type="date"
-                value={dataPagamento}
-                min={contrato.dataContratacao}
-                onChange={(e) => setDataPagamento(e.target.value)}
-              />
+            <div className="pay-opcoes">
+              <div className="field">
+                <label htmlFor="dataPagamento">Data do pagamento</label>
+                <input
+                  id="dataPagamento"
+                  type="date"
+                  value={dataPagamento}
+                  min={contrato.dataContratacao}
+                  onChange={(e) => setDataPagamento(e.target.value)}
+                />
+              </div>
+              <fieldset className="formas">
+                <legend>Forma de pagamento</legend>
+                {formasPara(equipe).map((f) => (
+                  <label
+                    key={f.id}
+                    className={formaPagamento === f.id ? 'forma ativa' : 'forma'}
+                  >
+                    <input
+                      type="radio"
+                      name="formaPagamento"
+                      value={f.id}
+                      checked={formaPagamento === f.id}
+                      onChange={() => setFormaPagamento(f.id)}
+                    />
+                    {f.nome}
+                  </label>
+                ))}
+              </fieldset>
             </div>
             <dl className="resume">
               <div>

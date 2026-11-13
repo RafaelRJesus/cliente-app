@@ -421,9 +421,14 @@ h2 {
 .pay {
   display: grid;
   gap: 1.5rem;
-  grid-template-columns: 220px 1fr;
+  grid-template-columns: minmax(0, 340px) 1fr;
   align-items: start;
   margin-bottom: 1.25rem;
+}
+
+.pay-opcoes {
+  display: grid;
+  gap: 1rem;
 }
 
 .pay .resume {
@@ -1017,4 +1022,52 @@ h2 {
 
 .table-wrap + .actions {
   margin-top: 1rem;
+}
+
+/* Forma de pagamento */
+
+.formas {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+  margin: 0;
+  padding: 0;
+  border: none;
+}
+
+.formas legend {
+  width: 100%;
+  margin-bottom: 0.4rem;
+  font-size: 0.85rem;
+  font-weight: 600;
+  color: var(--title);
+}
+
+.forma {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.4rem;
+  padding: 0.45rem 0.8rem;
+  border: 1px solid var(--border);
+  border-radius: 999px;
+  background: var(--surface);
+  font-size: 0.88rem;
+  cursor: pointer;
+}
+
+.forma input {
+  accent-color: var(--green-dark);
+  margin: 0;
+}
+
+.forma.ativa {
+  border-color: var(--green);
+  background: var(--green-soft);
+  color: var(--title);
+  font-weight: 600;
+}
+
+.forma:focus-within {
+  outline: 2px solid var(--green);
+  outline-offset: 2px;
 }

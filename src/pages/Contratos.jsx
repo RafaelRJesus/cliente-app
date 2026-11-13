@@ -6,6 +6,9 @@ import { Toast } from '../components/Toast'
 import { useData } from '../context/DataContext'
 import { calcularAtraso, saldoDevedor, situacaoContrato } from '../lib/credito'
 import { formatDate, formatMoney, formatPercent, today } from '../lib/format'
+import { PRODUTOS } from '../lib/produtos'
+
+const nomeProduto = (c) => PRODUTOS[c.produto ?? 'pessoal']?.nome ?? c.produto
 
 export function Contratos() {
   const { id } = useParams()
@@ -79,6 +82,7 @@ function ListaContratos() {
               <thead>
                 <tr>
                   <th>Cliente</th>
+                  <th>Produto</th>
                   <th>Contratação</th>
                   <th>Sistema</th>
                   <th className="num">Valor</th>
@@ -90,6 +94,7 @@ function ListaContratos() {
                 {visiveis.map((c) => (
                   <tr key={c.id} onClick={() => navigate(`/contratos/${c.id}`)}>
                     <td>{c.clienteNome}</td>
+                    <td>{nomeProduto(c)}</td>
                     <td>{formatDate(c.dataContratacao)}</td>
                     <td>
                       {c.sistema} · {c.prazo}x
@@ -153,7 +158,7 @@ function DetalheContrato({ contrato }) {
         </Link>
         <h1>{contrato.clienteNome}</h1>
         <p>
-          Contrato {contrato.id.slice(0, 8).toUpperCase()} ·{' '}
+          {nomeProduto(contrato)} · contrato {contrato.id.slice(0, 8).toUpperCase()} ·{' '}
           <StatusBadge status={situacaoContrato(contrato, hoje)} />
         </p>
       </header>
@@ -182,6 +187,8 @@ function DetalheContrato({ contrato }) {
           </strong>
         </div>
       </div>
+
+      <DetalhesProduto contrato={contrato} />
 
       {parcelaSelecionada && (
         <section className="card card-highlight">
@@ -253,5 +260,41 @@ function DetalheContrato({ contrato }) {
         />
       </section>
     </>
+  )
+}
+
+function DetalhesProduto({ contrato }) {
+  const d = contrato.detalhes
+  if (!d || Object.keys(d).length === 0) return null
+
+  const itens = {
+    consignado: [
+      ['Convênio', d.convenio],
+      ['Renda líquida', formatMoney(d.renda)],
+    ],
+    veiculo: [
+      ['Placa', d.placa],
+      ['Veículo', `${d.veiculo} (${d.anoModelo})`],
+      ['FIPE', `${formatMoney(d.valorFipe)} · ${d.codigoFipe} · ${d.referenciaFipe}`],
+    ],
+    imovel: [
+      ['Imóvel', d.tipoImovel],
+      ['Valor do imóvel', formatMoney(d.valorImovel)],
+    ],
+  }[contrato.produto]
+
+  if (!itens) return null
+  return (
+    <section className="card">
+      <h2>Garantia e dados do produto</h2>
+      <dl className="resume resume-inline">
+        {itens.map(([rotulo, valor]) => (
+          <div key={rotulo}>
+            <dt>{rotulo}</dt>
+            <dd>{valor}</dd>
+          </div>
+        ))}
+      </dl>
+    </section>
   )
 }

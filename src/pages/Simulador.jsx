@@ -2,74 +2,103 @@ import { useState } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
 import { Field } from '../components/Field'
 import { ParcelasTable } from '../components/ParcelasTable'
+import { GarantiaImovel } from '../components/simulador/GarantiaImovel'
+import { GarantiaVeiculo } from '../components/simulador/GarantiaVeiculo'
 import { useData } from '../context/DataContext'
+import { useTaxasMercado } from '../hooks/useTaxasMercado'
 import { simular } from '../lib/credito'
-import { formatMoney, formatPercent, today } from '../lib/format'
+import { formatDate, formatMoney, formatPercent, today } from '../lib/format'
+import { PRODUTOS, referenciaBcb, validarProduto } from '../lib/produtos'
+import { isValidPlaca } from '../lib/validators'
 
-const LIMITES = { valorMin: 100, valorMax: 1_000_000, prazoMax: 120, taxaMax: 15 }
-
-function validar(params) {
-  const errors = {}
-  if (!(params.valor >= LIMITES.valorMin && params.valor <= LIMITES.valorMax)) {
-    errors.valor = `Entre ${formatMoney(LIMITES.valorMin)} e ${formatMoney(LIMITES.valorMax)}.`
-  }
-  if (!(params.taxa >= 0 && params.taxa <= LIMITES.taxaMax)) {
-    errors.taxa = `Entre 0% e ${LIMITES.taxaMax}% a.m.`
-  }
-  if (!(
-    Number.isInteger(params.prazo) &&
-    params.prazo >= 1 &&
-    params.prazo <= LIMITES.prazoMax
-  )) {
-    errors.prazo = `De 1 a ${LIMITES.prazoMax} meses.`
-  }
-  if (!params.dataContratacao) errors.dataContratacao = 'Informe a data.'
-  return errors
+const formInicial = {
+  clienteId: '',
+  produto: 'pessoal',
+  convenio: 'inss',
+  renda: '',
+  valor: '10000',
+  taxa: String(PRODUTOS.pessoal.taxaPadrao),
+  prazo: '12',
+  sistema: 'PRICE',
+  dataContratacao: today(),
 }
 
 export function Simulador() {
   const { clientes, contratos } = useData()
+  const mercado = useTaxasMercado()
   const navigate = useNavigate()
-  const [form, setForm] = useState({
-    clienteId: '',
-    valor: '10000',
-    taxa: '2.5',
-    prazo: '12',
-    sistema: 'PRICE',
-    dataContratacao: today(),
-  })
+  const [form, setForm] = useState(formInicial)
+  const [garantia, setGarantia] = useState({})
+  const [taxaManual, setTaxaManual] = useState(false)
   const [salvando, setSalvando] = useState(false)
-  const [erroCliente, setErroCliente] = useState('')
+  const [erroContratar, setErroContratar] = useState('')
+
+  const regra = PRODUTOS[form.produto]
+  const referencia = mercado.taxas?.[referenciaBcb(form.produto, form.convenio)]
+  const taxaSugerida = referencia?.mediana ?? regra.taxaPadrao
+  const taxa = taxaManual ? Number(form.taxa) : taxaSugerida
 
   const params = {
     valor: Number(form.valor),
-    taxa: Number(form.taxa),
     prazo: Number(form.prazo),
+    taxa,
     dataContratacao: form.dataContratacao,
   }
-  const errors = validar(params)
-  const valido = Object.keys(errors).length === 0
 
-  const resultado = valido
+  const parametrosBasicosOk =
+    params.valor > 0 &&
+    Number.isInteger(params.prazo) &&
+    params.prazo > 0 &&
+    taxa >= 0 &&
+    form.dataContratacao
+  const resultado = parametrosBasicosOk
     ? simular({
         valor: params.valor,
-        taxaMensal: params.taxa / 100,
+        taxaMensal: taxa / 100,
         prazo: params.prazo,
         sistema: form.sistema,
-        dataContratacao: params.dataContratacao,
+        dataContratacao: form.dataContratacao,
       })
     : null
+
+  const errors = validarProduto({
+    produto: form.produto,
+    valor: params.valor,
+    prazo: params.prazo,
+    taxa,
+    primeiraParcela: resultado?.parcelas[0].valor ?? 0,
+    garantia: {
+      ...garantia,
+      valorImovel: Number(garantia.valorImovel) || undefined,
+    },
+    consignado: { renda: Number(form.renda) },
+  })
+  if (form.produto === 'veiculo' && !isValidPlaca(garantia.placa)) {
+    errors.placa = 'Informe uma placa válida.'
+  }
+  const podeContratar = resultado && Object.keys(errors).length === 0
 
   function handleChange(event) {
     const { name, value } = event.target
     setForm((current) => ({ ...current, [name]: value }))
-    if (name === 'clienteId') setErroCliente('')
+    setErroContratar('')
+  }
+
+  function trocarProduto(produto) {
+    setForm((current) => ({
+      ...current,
+      produto,
+      prazo: String(Math.min(Number(current.prazo) || 12, PRODUTOS[produto].prazoMax)),
+    }))
+    setGarantia({})
+    setTaxaManual(false)
+    setErroContratar('')
   }
 
   async function contratar() {
     const cliente = clientes.items.find((c) => c.id === form.clienteId)
     if (!cliente) {
-      setErroCliente('Selecione o cliente para contratar.')
+      setErroContratar('Selecione o cliente para contratar.')
       return
     }
 
@@ -78,11 +107,13 @@ export function Simulador() {
       const contrato = await contratos.add({
         clienteId: cliente.id,
         clienteNome: cliente.nome,
+        produto: form.produto,
+        detalhes: detalhesDoProduto(form, garantia),
         valor: params.valor,
-        taxaMensal: params.taxa / 100,
+        taxaMensal: taxa / 100,
         prazo: params.prazo,
         sistema: form.sistema,
-        dataContratacao: params.dataContratacao,
+        dataContratacao: form.dataContratacao,
         iof: resultado.iof,
         cetMensal: resultado.cetMensal,
         parcelas: resultado.parcelas,
@@ -91,23 +122,39 @@ export function Simulador() {
       navigate(`/contratos/${contrato.id}`)
     } catch (err) {
       console.error(err)
-      setErroCliente('Erro ao gravar o contrato.')
+      setErroContratar('Erro ao gravar o contrato.')
       setSalvando(false)
     }
   }
 
-  const fieldErro = (name) => (form[name] === '' ? undefined : errors[name])
+  const erroVisivel = (name) => (form[name] === '' ? undefined : errors[name])
 
   return (
     <>
       <header className="page-header">
         <h1>Simulador de crédito</h1>
-        <p>Empréstimo pessoal com tabela Price ou SAC, IOF e CET.</p>
+        <p>Escolha o produto, ajuste os parâmetros e gere o contrato.</p>
       </header>
+
+      <div className="produtos" role="tablist">
+        {Object.entries(PRODUTOS).map(([id, p]) => (
+          <button
+            key={id}
+            type="button"
+            role="tab"
+            aria-selected={form.produto === id}
+            className={form.produto === id ? 'produto active' : 'produto'}
+            onClick={() => trocarProduto(id)}
+          >
+            <strong>{p.nome}</strong>
+            <span>{p.descricao}</span>
+          </button>
+        ))}
+      </div>
 
       <div className="grid-sim">
         <section className="card">
-          <h2>Parâmetros</h2>
+          <h2>Parâmetros · {regra.nome}</h2>
           <div className="form">
             <Field
               label="Cliente"
@@ -115,7 +162,7 @@ export function Simulador() {
               as="select"
               value={form.clienteId}
               onChange={handleChange}
-              error={erroCliente}
+              error={erroContratar}
             >
               <option value="">Selecione...</option>
               {clientes.items.map((c) => (
@@ -131,15 +178,67 @@ export function Simulador() {
               </p>
             )}
 
+            {form.produto === 'consignado' && (
+              <div className="form-row">
+                <Field
+                  label="Convênio"
+                  name="convenio"
+                  as="select"
+                  value={form.convenio}
+                  onChange={handleChange}
+                >
+                  {Object.entries(PRODUTOS.consignado.convenios).map(([id, c]) => (
+                    <option key={id} value={id}>
+                      {c.nome}
+                    </option>
+                  ))}
+                </Field>
+                <Field
+                  label="Renda líquida (R$)"
+                  name="renda"
+                  type="number"
+                  min="0"
+                  step="100"
+                  required
+                  value={form.renda}
+                  onChange={handleChange}
+                  error={erroVisivel('renda')}
+                  hint={
+                    Number(form.renda) > 0
+                      ? `Margem de ${PRODUTOS.consignado.margem * 100}%: ${formatMoney(Number(form.renda) * PRODUTOS.consignado.margem)}`
+                      : undefined
+                  }
+                />
+              </div>
+            )}
+
+            {form.produto === 'veiculo' && (
+              <GarantiaVeiculo
+                garantia={garantia}
+                onChange={setGarantia}
+                erro={garantia.placa ? errors.garantia : undefined}
+              />
+            )}
+
+            {form.produto === 'imovel' && (
+              <GarantiaImovel
+                garantia={garantia}
+                onChange={setGarantia}
+                erro={garantia.valorImovel ? errors.garantia : undefined}
+              />
+            )}
+
             <Field
-              label="Valor solicitado (R$)"
+              label={
+                form.produto === 'pix' ? 'Valor do Pix (R$)' : 'Valor solicitado (R$)'
+              }
               name="valor"
               type="number"
               min="0"
               step="100"
               value={form.valor}
               onChange={handleChange}
-              error={fieldErro('valor')}
+              error={erroVisivel('valor')}
             />
             <div className="form-row">
               <Field
@@ -148,21 +247,32 @@ export function Simulador() {
                 type="number"
                 min="0"
                 step="0.01"
-                value={form.taxa}
-                onChange={handleChange}
-                error={fieldErro('taxa')}
+                value={taxaManual ? form.taxa : String(taxaSugerida)}
+                onChange={(e) => {
+                  setTaxaManual(true)
+                  handleChange(e)
+                }}
+                error={errors.taxa}
               />
               <Field
-                label="Prazo (meses)"
+                label={`Prazo (até ${regra.prazoMax} meses)`}
                 name="prazo"
                 type="number"
                 min="1"
                 step="1"
                 value={form.prazo}
                 onChange={handleChange}
-                error={fieldErro('prazo')}
+                error={erroVisivel('prazo')}
               />
             </div>
+            <ReferenciaMercado
+              mercado={mercado}
+              referencia={referencia}
+              obs={regra.referenciaObs}
+              taxaManual={taxaManual}
+              onUsar={() => setTaxaManual(false)}
+            />
+
             <div className="form-row">
               <Field
                 label="Sistema"
@@ -180,7 +290,6 @@ export function Simulador() {
                 type="date"
                 value={form.dataContratacao}
                 onChange={handleChange}
-                error={errors.dataContratacao}
               />
             </div>
           </div>
@@ -198,7 +307,9 @@ export function Simulador() {
                   <strong>{formatMoney(resultado.parcelas[0].valor)}</strong>
                 </div>
                 <div className="kpi">
-                  <span>Valor liberado</span>
+                  <span>
+                    {form.produto === 'pix' ? 'Valor enviado' : 'Valor liberado'}
+                  </span>
                   <strong>{formatMoney(resultado.valorLiberado)}</strong>
                 </div>
                 <div className="kpi">
@@ -218,7 +329,7 @@ export function Simulador() {
                 </div>
                 <div>
                   <dt>Taxa anual</dt>
-                  <dd>{formatPercent((1 + params.taxa / 100) ** 12 - 1)}</dd>
+                  <dd>{formatPercent((1 + taxa / 100) ** 12 - 1)}</dd>
                 </div>
                 <div>
                   <dt>CET</dt>
@@ -229,11 +340,19 @@ export function Simulador() {
                 </div>
               </dl>
 
+              {!podeContratar && (
+                <ul className="pendencias">
+                  {Object.values(errors).map((msg) => (
+                    <li key={msg}>{msg}</li>
+                  ))}
+                </ul>
+              )}
+
               <button
                 type="button"
                 className="btn btn-primary btn-block"
                 onClick={contratar}
-                disabled={salvando}
+                disabled={salvando || !podeContratar}
               >
                 {salvando ? 'Gravando...' : 'Contratar'}
               </button>
@@ -250,4 +369,70 @@ export function Simulador() {
       )}
     </>
   )
+}
+
+function ReferenciaMercado({ mercado, referencia, obs, taxaManual, onUsar }) {
+  if (mercado.carregando)
+    return <p className="field-hint">Buscando taxas no Banco Central...</p>
+  if (mercado.erro || !referencia) {
+    return (
+      <p className="field-hint">
+        Taxa de mercado indisponível; usando taxa padrão do produto.
+      </p>
+    )
+  }
+
+  return (
+    <div className="referencia">
+      <span>
+        Mercado (Banco Central,{' '}
+        {referencia.periodo.includes('-')
+          ? formatPeriodo(referencia.periodo)
+          : referencia.periodo}
+        ): mediana <strong>{taxaBr(referencia.mediana)}% a.m.</strong> entre{' '}
+        {referencia.instituicoes} instituições · menor {taxaBr(referencia.menor)}% · maior{' '}
+        {taxaBr(referencia.maior)}%
+      </span>
+      {obs && <span className="muted small">{obs}</span>}
+      {taxaManual && (
+        <button type="button" className="link-button" onClick={onUsar}>
+          Usar taxa de mercado
+        </button>
+      )}
+    </div>
+  )
+}
+
+const taxaBr = (n) => n.toLocaleString('pt-BR', { minimumFractionDigits: 2 })
+
+const formatPeriodo = (periodo) =>
+  periodo
+    .split(' a ')
+    .map((d) => formatDate(d))
+    .join(' a ')
+
+function detalhesDoProduto(form, garantia) {
+  if (form.produto === 'consignado') {
+    return {
+      convenio: PRODUTOS.consignado.convenios[form.convenio].nome,
+      renda: Number(form.renda),
+    }
+  }
+  if (form.produto === 'veiculo') {
+    return {
+      placa: garantia.placa,
+      veiculo: garantia.descricao,
+      anoModelo: garantia.anoModelo,
+      codigoFipe: garantia.codigoFipe,
+      valorFipe: garantia.valorFipe,
+      referenciaFipe: garantia.mesReferencia,
+    }
+  }
+  if (form.produto === 'imovel') {
+    return {
+      tipoImovel: garantia.tipoImovel ?? 'Casa',
+      valorImovel: Number(garantia.valorImovel),
+    }
+  }
+  return {}
 }

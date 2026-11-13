@@ -13,6 +13,7 @@ const LINKS = [
   },
   { to: '/contratos', label: 'Contratos', para: ['admin', 'gestor'] },
   { to: '/contratos', label: 'Meus contratos', para: ['cliente'] },
+  { to: '/gestores', label: 'Gestores', para: ['admin'] },
 ]
 
 export function Layout() {

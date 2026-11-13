@@ -209,6 +209,12 @@ describe('gestor', () => {
     )
   })
 
+  it('perde o acesso quando o admin remove o convite', async () => {
+    await deleteDoc(doc(conta('admin', 'admin@rj.test'), 'gestores/gestor@rj.test'))
+    await assertFails(getDocs(collection(db(), 'clientes')))
+    await assertFails(getDoc(doc(db(), 'contratos/do-joao')))
+  })
+
   it('não se promove a admin', async () => {
     await assertFails(updateDoc(doc(db(), 'usuarios/gestor'), { papel: 'admin' }))
   })

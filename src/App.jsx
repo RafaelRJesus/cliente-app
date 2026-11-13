@@ -10,10 +10,11 @@ import { EsqueciSenha } from './pages/acesso/EsqueciSenha'
 import { Clientes } from './pages/Clientes'
 import { Contratos } from './pages/Contratos'
 import { Dashboard } from './pages/Dashboard'
+import { Gestores } from './pages/Gestores'
 import { Simulador } from './pages/Simulador'
 
 export default function App() {
-  const { user, perfil, carregando, equipe, erro, sair } = useAuth()
+  const { user, perfil, carregando, equipe, admin, erro, sair } = useAuth()
 
   if (carregando) return <p className="empty tela-cheia">Carregando...</p>
 
@@ -52,6 +53,7 @@ export default function App() {
             element={equipe ? <Dashboard /> : <Navigate to="/contratos" replace />}
           />
           {equipe && <Route path="clientes" element={<Clientes />} />}
+          {admin && <Route path="gestores" element={<Gestores />} />}
           <Route path="simulador" element={<Simulador />} />
           <Route path="contratos" element={<Contratos />} />
           <Route path="contratos/:id" element={<Contratos />} />

@@ -1,5 +1,6 @@
 import { useMemo, useState } from 'react'
 import { Link, useNavigate, useParams } from 'react-router-dom'
+import { ConfirmacaoInline } from '../components/ConfirmacaoInline'
 import { ParcelasTable } from '../components/ParcelasTable'
 import { StatusBadge } from '../components/StatusBadge'
 import { Toast } from '../components/Toast'
@@ -190,29 +191,16 @@ function DetalheContrato({ contrato }) {
       </header>
 
       {confirmarExclusao && (
-        <section className="card card-danger" role="alert">
-          <h2>Excluir este contrato?</h2>
-          <p>
+        <section className="card card-danger">
+          <ConfirmacaoInline
+            titulo="Excluir este contrato?"
+            ocupado={excluindo}
+            onConfirmar={excluir}
+            onCancelar={() => setConfirmarExclusao(false)}
+          >
             O contrato e o histórico de {pagas} parcela(s) paga(s) serão apagados. Essa
             ação não pode ser desfeita.
-          </p>
-          <div className="actions">
-            <button
-              type="button"
-              className="btn btn-danger-solid"
-              onClick={excluir}
-              disabled={excluindo}
-            >
-              {excluindo ? 'Excluindo...' : 'Sim, excluir'}
-            </button>
-            <button
-              type="button"
-              className="btn btn-ghost"
-              onClick={() => setConfirmarExclusao(false)}
-            >
-              Cancelar
-            </button>
-          </div>
+          </ConfirmacaoInline>
         </section>
       )}
 

@@ -1,4 +1,5 @@
 import { useMemo, useState } from 'react'
+import { ConfirmacaoInline } from '../components/ConfirmacaoInline'
 import { Field } from '../components/Field'
 import { Toast } from '../components/Toast'
 import { useData } from '../context/DataContext'
@@ -32,6 +33,8 @@ export function Clientes() {
   const [saving, setSaving] = useState(false)
   const [search, setSearch] = useState('')
   const [message, setMessage] = useState(null)
+  const [confirmandoId, setConfirmandoId] = useState(null)
+  const [removendo, setRemovendo] = useState(false)
   const cep = useCep((endereco) => {
     setForm((current) => ({ ...current, ...endereco }))
     setErrors((current) => ({
@@ -111,13 +114,27 @@ export function Clientes() {
   }
 
   async function handleRemove(cliente) {
+    setRemovendo(true)
     try {
       await clientes.remove(cliente.id)
       setMessage({ text: `${cliente.nome} removido.` })
+      setConfirmandoId(null)
     } catch (err) {
       console.error(err)
       setMessage({ text: 'Erro ao remover o cliente.', type: 'error' })
+    } finally {
+      setRemovendo(false)
     }
+  }
+
+  // Sem a lista de contratos carregada não dá para saber se o cliente pode sair.
+  const contratosIndisponiveis = contratos.loading || Boolean(contratos.error)
+
+  function motivoBloqueio(qtdContratos) {
+    if (contratos.loading) return 'Aguarde: carregando contratos'
+    if (contratos.error) return 'Não foi possível verificar os contratos'
+    if (qtdContratos > 0) return 'Cliente possui contratos'
+    return undefined
   }
 
   return (
@@ -297,15 +314,27 @@ export function Clientes() {
                       contrato(s)
                     </span>
                   </div>
-                  <button
-                    type="button"
-                    className="btn btn-danger btn-sm"
-                    disabled={qtdContratos > 0}
-                    title={qtdContratos > 0 ? 'Cliente possui contratos' : undefined}
-                    onClick={() => handleRemove(cliente)}
-                  >
-                    Remover
-                  </button>
+                  {confirmandoId === cliente.id ? (
+                    <ConfirmacaoInline
+                      titulo={`Remover ${cliente.nome}?`}
+                      ocupado={removendo}
+                      rotuloConfirmar="Sim, remover"
+                      onConfirmar={() => handleRemove(cliente)}
+                      onCancelar={() => setConfirmandoId(null)}
+                    >
+                      Essa ação não pode ser desfeita.
+                    </ConfirmacaoInline>
+                  ) : (
+                    <button
+                      type="button"
+                      className="btn btn-danger btn-sm"
+                      disabled={contratosIndisponiveis || qtdContratos > 0}
+                      title={motivoBloqueio(qtdContratos)}
+                      onClick={() => setConfirmandoId(cliente.id)}
+                    >
+                      Remover
+                    </button>
+                  )}
                 </li>
               )
             })}

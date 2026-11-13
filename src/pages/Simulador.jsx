@@ -1,5 +1,5 @@
 import { useState } from 'react'
-import { Link, useNavigate } from 'react-router-dom'
+import { Link, useNavigate, useSearchParams } from 'react-router-dom'
 import { Field } from '../components/Field'
 import { ParcelasTable } from '../components/ParcelasTable'
 import { GarantiaImovel } from '../components/simulador/GarantiaImovel'
@@ -35,7 +35,12 @@ export function Simulador() {
   const { equipe } = useAuth()
   const mercado = useTaxasMercado()
   const navigate = useNavigate()
-  const [form, setForm] = useState(formInicial)
+  const [busca] = useSearchParams()
+  // vindo da ficha do cliente (/simulador?cliente=...), já começa com ele escolhido
+  const [form, setForm] = useState(() => ({
+    ...formInicial,
+    clienteId: busca.get('cliente') ?? '',
+  }))
   const [garantia, setGarantia] = useState({})
   const [taxaManual, setTaxaManual] = useState(false)
   const [salvando, setSalvando] = useState(false)

@@ -1,4 +1,5 @@
 import { useMemo, useState } from 'react'
+import { Link } from 'react-router-dom'
 import { ConfirmacaoInline } from '../components/ConfirmacaoInline'
 import { ClienteForm } from '../components/ClienteForm'
 import { Toast } from '../components/Toast'
@@ -116,7 +117,9 @@ export function Clientes() {
               return (
                 <li key={cliente.id} className="list-item">
                   <div>
-                    <strong>{cliente.nome}</strong>
+                    <Link to={`/clientes/${cliente.id}`} className="nome-link">
+                      <strong>{cliente.nome}</strong>
+                    </Link>
                     <span className="muted">CPF {cliente.cpf}</span>
                     <span className="muted">
                       {cliente.email} · {cliente.telefone}

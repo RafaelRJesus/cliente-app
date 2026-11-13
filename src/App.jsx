@@ -7,6 +7,7 @@ import { ConfirmarEmail } from './pages/acesso/ConfirmarEmail'
 import { CriarConta } from './pages/acesso/CriarConta'
 import { Entrar } from './pages/acesso/Entrar'
 import { EsqueciSenha } from './pages/acesso/EsqueciSenha'
+import { ClienteDetalhe } from './pages/ClienteDetalhe'
 import { Clientes } from './pages/Clientes'
 import { Contratos } from './pages/Contratos'
 import { Dashboard } from './pages/Dashboard'
@@ -54,6 +55,7 @@ export default function App() {
             element={equipe ? <Dashboard /> : <Navigate to="/contratos" replace />}
           />
           {equipe && <Route path="clientes" element={<Clientes />} />}
+          {equipe && <Route path="clientes/:id" element={<ClienteDetalhe />} />}
           {admin && <Route path="gestores" element={<Gestores />} />}
           {admin && <Route path="usuarios" element={<Usuarios />} />}
           <Route path="simulador" element={<Simulador />} />

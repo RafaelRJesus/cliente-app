@@ -4,6 +4,7 @@ import { Field } from '../components/Field'
 import { ParcelasTable } from '../components/ParcelasTable'
 import { GarantiaImovel } from '../components/simulador/GarantiaImovel'
 import { GarantiaVeiculo } from '../components/simulador/GarantiaVeiculo'
+import { useAuth } from '../context/AuthContext'
 import { useData } from '../context/DataContext'
 import { useTaxasMercado } from '../hooks/useTaxasMercado'
 import { simular } from '../lib/credito'
@@ -31,6 +32,7 @@ const formInicial = {
 
 export function Simulador() {
   const { clientes, contratos } = useData()
+  const { equipe } = useAuth()
   const mercado = useTaxasMercado()
   const navigate = useNavigate()
   const [form, setForm] = useState(formInicial)
@@ -164,25 +166,33 @@ export function Simulador() {
         <section className="card">
           <h2>Parâmetros · {regra.nome}</h2>
           <div className="form">
-            <Field
-              label="Cliente"
-              name="clienteId"
-              as="select"
-              value={form.clienteId}
-              onChange={handleChange}
-              error={erroContratar}
-            >
-              <option value="">Selecione...</option>
-              {clientes.items.map((c) => (
-                <option key={c.id} value={c.id}>
-                  {c.nome} - {c.cpf}
-                </option>
-              ))}
-            </Field>
-            {clientes.items.length === 0 && (
+            {equipe ? (
+              <>
+                <Field
+                  label="Cliente"
+                  name="clienteId"
+                  as="select"
+                  value={form.clienteId}
+                  onChange={handleChange}
+                  error={erroContratar}
+                >
+                  <option value="">Selecione...</option>
+                  {clientes.items.map((c) => (
+                    <option key={c.id} value={c.id}>
+                      {c.nome} - {c.cpf}
+                    </option>
+                  ))}
+                </Field>
+                {clientes.items.length === 0 && (
+                  <p className="muted small">
+                    Nenhum cliente ainda. <Link to="/clientes">Cadastre um</Link> para
+                    contratar.
+                  </p>
+                )}
+              </>
+            ) : (
               <p className="muted small">
-                Nenhum cliente ainda. <Link to="/clientes">Cadastre um</Link> para
-                contratar.
+                Simule à vontade. Para contratar, fale com seu gestor.
               </p>
             )}
 
@@ -362,14 +372,16 @@ export function Simulador() {
                 </ul>
               )}
 
-              <button
-                type="button"
-                className="btn btn-primary btn-block"
-                onClick={contratar}
-                disabled={salvando || !podeContratar}
-              >
-                {salvando ? 'Gravando...' : 'Contratar'}
-              </button>
+              {equipe && (
+                <button
+                  type="button"
+                  className="btn btn-primary btn-block"
+                  onClick={contratar}
+                  disabled={salvando || !podeContratar}
+                >
+                  {salvando ? 'Gravando...' : 'Contratar'}
+                </button>
+              )}
             </>
           )}
         </section>

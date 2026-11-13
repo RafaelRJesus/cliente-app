@@ -1,7 +1,7 @@
 import { onlyDigits } from './format'
 import { LIMITES_CLIENTE } from './limites'
 
-const EMAIL_REGEX = /^[^\s@]+@[^\s@]+\.[^\s@]+$/
+export const EMAIL_REGEX = /^[^\s@]+@[^\s@]+\.[^\s@]+$/
 
 export function isValidCpf(value) {
   const cpf = onlyDigits(value)

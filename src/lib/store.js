@@ -3,48 +3,81 @@ import {
   collection,
   deleteDoc,
   doc,
+  getDoc,
   getDocs,
   query,
+  setDoc,
   updateDoc,
   where,
 } from 'firebase/firestore'
-import { db, firebaseEnabled, getCurrentUser } from './firebase'
+import { db, firebaseEnabled } from './firebase'
+import { onlyDigits } from './format'
+import { ehEquipe } from './perfis'
 
 const byNewest = (a, b) => b.criadoEm.localeCompare(a.criadoEm)
 
-function firestoreStore(name) {
+// O cadastro de cliente usa o CPF (só números) como id: um cadastro por CPF.
+const idDoItem = (name, item) => (name === 'clientes' ? onlyDigits(item.cpf) : null)
+
+// O que cada perfil enxerga. A equipe vê tudo; o cliente, só o que é dele.
+// As regras do Firestore garantem o mesmo do lado do servidor.
+function firestoreStore(name, perfil) {
+  const col = collection(db, name)
+
+  async function listarDoCliente() {
+    if (name === 'clientes') {
+      const snap = await getDoc(doc(col, perfil.clienteId))
+      return snap.exists() ? [{ id: snap.id, ...snap.data() }] : []
+    }
+    const snap = await getDocs(query(col, where('clienteId', '==', perfil.clienteId)))
+    return snap.docs.map((d) => ({ id: d.id, ...d.data() }))
+  }
+
   return {
     async list() {
-      const user = await getCurrentUser()
-      const q = query(collection(db, name), where('uid', '==', user.uid))
-      const snapshot = await getDocs(q)
-      return snapshot.docs.map((d) => ({ id: d.id, ...d.data() })).sort(byNewest)
+      if (!ehEquipe(perfil)) return (await listarDoCliente()).sort(byNewest)
+      const snap = await getDocs(col)
+      return snap.docs.map((d) => ({ id: d.id, ...d.data() })).sort(byNewest)
     },
 
     async add(item) {
-      const user = await getCurrentUser()
-      const data = { ...item, uid: user.uid }
-      const ref = await addDoc(collection(db, name), data)
+      const data = { ...item, criadoPor: perfil.uid }
+      const id = idDoItem(name, item)
+      if (id) {
+        // setDoc num CPF que já existe seria uma alteração, que as regras recusam.
+        await setDoc(doc(col, id), data)
+        return { id, ...data }
+      }
+      const ref = await addDoc(col, data)
       return { id: ref.id, ...data }
     },
 
-    update: (id, changes) => updateDoc(doc(db, name, id), changes),
+    update: (id, changes) => updateDoc(doc(col, id), changes),
 
-    remove: (id) => deleteDoc(doc(db, name, id)),
+    remove: (id) => deleteDoc(doc(col, id)),
   }
 }
 
 // Usado quando o Firebase não está configurado (.env.local ausente).
-function localStore(name) {
+function localStore(name, perfil) {
   const key = `cliente-app:${name}`
   const read = () => JSON.parse(localStorage.getItem(key) ?? '[]')
   const write = (items) => localStorage.setItem(key, JSON.stringify(items))
+  const visivel = (item) =>
+    ehEquipe(perfil) ||
+    (name === 'clientes'
+      ? item.id === perfil.clienteId
+      : item.clienteId === perfil.clienteId)
 
   return {
-    list: async () => read().sort(byNewest),
+    list: async () => read().filter(visivel).sort(byNewest),
 
     async add(item) {
-      const created = { ...item, id: crypto.randomUUID() }
+      const id = idDoItem(name, item) ?? crypto.randomUUID()
+      if (read().some((i) => i.id === id)) {
+        throw Object.assign(new Error('já existe'), { code: 'permission-denied' })
+      }
+      const created = { ...item, id, criadoPor: perfil.uid }
       write([created, ...read()])
       return created
     },
@@ -61,8 +94,5 @@ function localStore(name) {
 
 export const storageMode = firebaseEnabled ? 'firestore' : 'local'
 
-export const createStore = (name) =>
-  firebaseEnabled ? firestoreStore(name) : localStore(name)
-
-export const clientesStore = createStore('clientes')
-export const contratosStore = createStore('contratos')
+export const createStore = (name, perfil) =>
+  firebaseEnabled ? firestoreStore(name, perfil) : localStore(name, perfil)

@@ -1,5 +1,5 @@
 import { initializeApp } from 'firebase/app'
-import { getAuth, signInAnonymously } from 'firebase/auth'
+import { getAuth } from 'firebase/auth'
 import { getFirestore } from 'firebase/firestore'
 
 const config = {
@@ -18,16 +18,5 @@ export const firebaseEnabled =
 
 const app = firebaseEnabled ? initializeApp(config) : null
 export const db = app ? getFirestore(app) : null
-const auth = app ? getAuth(app) : null
-
-let userPromise
-
-// Cada visitante recebe um uid anônimo; as regras do Firestore usam esse uid
-// para isolar os dados de cada um.
-export function getCurrentUser() {
-  if (!auth) return Promise.resolve(null)
-  userPromise ??= auth.currentUser
-    ? Promise.resolve(auth.currentUser)
-    : signInAnonymously(auth).then((cred) => cred.user)
-  return userPromise
-}
+export const auth = app ? getAuth(app) : null
+if (auth) auth.languageCode = 'pt-BR'

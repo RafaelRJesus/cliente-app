@@ -4,6 +4,7 @@ import { ConfirmacaoInline } from '../components/ConfirmacaoInline'
 import { ParcelasTable } from '../components/ParcelasTable'
 import { StatusBadge } from '../components/StatusBadge'
 import { Toast } from '../components/Toast'
+import { useAuth } from '../context/AuthContext'
 import { useData } from '../context/DataContext'
 import { calcularAtraso, saldoDevedor, situacaoContrato } from '../lib/credito'
 import { formatDate, formatMoney, formatPercent, today } from '../lib/format'
@@ -30,6 +31,7 @@ export function Contratos() {
 
 function ListaContratos() {
   const { contratos } = useData()
+  const { equipe } = useAuth()
   const navigate = useNavigate()
   const [filtro, setFiltro] = useState('todos')
   const hoje = today()
@@ -50,11 +52,15 @@ function ListaContratos() {
     <>
       <header className="page-header page-header-row">
         <div>
-          <h1>Contratos</h1>
-          <p>Contratos gerados a partir do simulador.</p>
+          <h1>{equipe ? 'Contratos' : 'Meus contratos'}</h1>
+          <p>
+            {equipe
+              ? 'Contratos gerados a partir do simulador.'
+              : 'Acompanhe suas parcelas e registre pagamentos.'}
+          </p>
         </div>
         <Link to="/simulador" className="btn btn-primary">
-          Nova simulação
+          {equipe ? 'Nova simulação' : 'Simular crédito'}
         </Link>
       </header>
 
@@ -123,6 +129,7 @@ function ListaContratos() {
 
 function DetalheContrato({ contrato }) {
   const { contratos } = useData()
+  const { equipe } = useAuth()
   const navigate = useNavigate()
   const [confirmarExclusao, setConfirmarExclusao] = useState(false)
   const [excluindo, setExcluindo] = useState(false)
@@ -184,7 +191,7 @@ function DetalheContrato({ contrato }) {
             <StatusBadge status={situacaoContrato(contrato, hoje)} />
           </p>
         </div>
-        {!confirmarExclusao && (
+        {equipe && !confirmarExclusao && (
           <button
             type="button"
             className="btn btn-danger"

@@ -1,12 +1,22 @@
-import { createContext, useContext } from 'react'
+import { createContext, useContext, useMemo } from 'react'
 import { useCollection } from '../hooks/useCollection'
-import { clientesStore, contratosStore } from '../lib/store'
+import { createStore } from '../lib/store'
+import { useAuth } from './AuthContext'
 
 const DataContext = createContext(null)
 
 export function DataProvider({ children }) {
-  const clientes = useCollection(clientesStore)
-  const contratos = useCollection(contratosStore)
+  const { perfil } = useAuth()
+  // Um store por perfil: ao trocar de usuário, a carteira é recarregada.
+  const stores = useMemo(
+    () => ({
+      clientes: createStore('clientes', perfil),
+      contratos: createStore('contratos', perfil),
+    }),
+    [perfil],
+  )
+  const clientes = useCollection(stores.clientes)
+  const contratos = useCollection(stores.contratos)
 
   return (
     <DataContext.Provider value={{ clientes, contratos }}>

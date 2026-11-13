@@ -15,10 +15,18 @@ export const listarModelos = (tipo, marca) =>
     return data.modelos
   })
 
-export const listarAnos = (tipo, marca, modelo) =>
-  cached(`fipe:${tipo}:${marca}:${modelo}:anos`, 24 * 7, () =>
+export const listarAnos = async (tipo, marca, modelo) => {
+  const anos = await cached(`fipe:${tipo}:${marca}:${modelo}:anos`, 24 * 7, () =>
     getJson(`${BASE}/${tipo}/marcas/${marca}/modelos/${modelo}/anos`),
   )
+  return anos.map(nomeAno)
+}
+
+// A FIPE usa o ano 32000 para veículo zero km.
+export const nomeAno = (ano) => ({
+  ...ano,
+  nome: ano.nome.replace(/^32000\b/, 'Zero km'),
+})
 
 export async function consultarPreco(tipo, marca, modelo, ano) {
   const data = await cached(`fipe:${tipo}:${marca}:${modelo}:${ano}`, 24, () =>

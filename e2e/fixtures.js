@@ -9,8 +9,20 @@ const json = (route, body, status = 200) =>
   })
 
 // APIs externas sempre simuladas: os testes não dependem de rede.
+// Por padrão cada teste já começa logado como o admin do modo local.
+// Use test.use({ sessao: null }) para começar na tela de login.
 export const test = base.extend({
-  page: async ({ page }, run) => {
+  sessao: ['admin-local', { option: true }],
+
+  page: async ({ page, sessao }, run) => {
+    if (sessao) {
+      await page.addInitScript((uid) => {
+        if (!sessionStorage.getItem('e2e-sessao')) {
+          localStorage.setItem('rjbank:sessao', uid)
+          sessionStorage.setItem('e2e-sessao', '1')
+        }
+      }, sessao)
+    }
     await page.route('**/brasilapi.com.br/api/cep/**', (r) =>
       json(r, {
         street: 'Praça da Sé',

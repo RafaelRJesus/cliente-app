@@ -369,14 +369,15 @@ describe('número do cliente', () => {
   })
 
   it('equipe numera cadastro antigo sem número, uma vez só', async () => {
-    const lote = writeBatch(gestor())
-    lote.update(doc(gestor(), 'contadores/clientes'), { ultimo: 3 })
-    lote.update(doc(gestor(), `clientes/${CPF_ANTIGO}`), { numero: 3 })
+    const g = gestor() // o lote e os documentos têm de ser da mesma conexão
+    const lote = writeBatch(g)
+    lote.update(doc(g, 'contadores/clientes'), { ultimo: 3 })
+    lote.update(doc(g, `clientes/${CPF_ANTIGO}`), { numero: 3 })
     await assertSucceeds(lote.commit())
 
-    const denovo = writeBatch(gestor())
-    denovo.update(doc(gestor(), 'contadores/clientes'), { ultimo: 4 })
-    denovo.update(doc(gestor(), `clientes/${CPF_ANTIGO}`), { numero: 4 })
+    const denovo = writeBatch(g)
+    denovo.update(doc(g, 'contadores/clientes'), { ultimo: 4 })
+    denovo.update(doc(g, `clientes/${CPF_ANTIGO}`), { numero: 4 })
     await assertFails(denovo.commit())
   })
 
@@ -404,9 +405,10 @@ describe('número do contrato', () => {
   })
 
   it('prefixo tem de ser o do produto', async () => {
-    const lote = writeBatch(gestor())
-    lote.update(doc(gestor(), `clientes/${CPF_JOAO}`), { ultimoContrato: 1 })
-    lote.set(doc(collection(gestor(), 'contratos')), {
+    const g = gestor()
+    const lote = writeBatch(g)
+    lote.update(doc(g, `clientes/${CPF_JOAO}`), { ultimoContrato: 1 })
+    lote.set(doc(collection(g, 'contratos')), {
       ...contrato(CPF_JOAO, 'gestor'),
       numeroContrato: '1050000002001', // 105 = Pix, mas o produto é pessoal
       sequencia: 1,

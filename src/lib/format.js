@@ -43,3 +43,16 @@ export function maskPhone(value) {
 
 // Data local no formato AAAA-MM-DD (o mesmo usado nos vencimentos).
 export const today = () => new Date().toLocaleDateString('sv-SE')
+
+export const maskCep = (value) =>
+  onlyDigits(value)
+    .slice(0, 8)
+    .replace(/(\d{5})(\d)/, '$1-$2')
+
+export function maskPlaca(value) {
+  const placa = value
+    .toUpperCase()
+    .replace(/[^A-Z0-9]/g, '')
+    .slice(0, 7)
+  return placa.length > 3 ? `${placa.slice(0, 3)}-${placa.slice(3)}` : placa
+}

@@ -1,4 +1,5 @@
 import { describe, expect, it } from 'vitest'
+import { parseValorFipe } from './api/fipe'
 import { maskCpf, maskPhone } from './format'
 import { isValidCpf, validateCliente } from './validators'
 
@@ -29,6 +30,11 @@ describe('validateCliente', () => {
     email: 'maria@email.com',
     telefone: '(51) 99999-8888',
     cpf: '529.982.247-25',
+    cep: '01001-000',
+    logradouro: 'Praça da Sé',
+    numero: '10',
+    cidade: 'São Paulo',
+    uf: 'SP',
   }
 
   it('não retorna erros para um cliente válido', () => {
@@ -38,5 +44,12 @@ describe('validateCliente', () => {
   it('aponta os campos inválidos', () => {
     const erros = validateCliente({ ...valido, email: 'maria', cpf: '111.111.111-11' })
     expect(Object.keys(erros)).toEqual(['email', 'cpf'])
+  })
+})
+
+describe('parseValorFipe', () => {
+  it('converte o valor textual da FIPE', () => {
+    expect(parseValorFipe('R$ 59.777,00')).toBe(59777)
+    expect(parseValorFipe('R$ 1.234.567,89')).toBe(1234567.89)
   })
 })

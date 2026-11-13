@@ -37,5 +37,27 @@ export function validateCliente(form) {
   if (!form.cpf.trim()) errors.cpf = 'Informe o CPF.'
   else if (!isValidCpf(form.cpf)) errors.cpf = 'CPF inválido.'
 
+  if (!isValidCep(form.cep)) errors.cep = 'CEP inválido.'
+  if (!form.logradouro?.trim()) errors.logradouro = 'Informe o logradouro.'
+  if (!form.numero?.trim()) errors.numero = 'Informe o número.'
+  if (!form.cidade?.trim()) errors.cidade = 'Informe a cidade.'
+  if (!/^[A-Za-z]{2}$/.test(form.uf ?? '')) errors.uf = 'UF inválida.'
+
   return errors
 }
+
+// Placa antiga (ABC1234) ou Mercosul (ABC1D23).
+const PLACA_REGEX = /^[A-Z]{3}\d[A-Z0-9]\d{2}$/
+
+export const normalizarPlaca = (value = '') =>
+  value.toUpperCase().replace(/[^A-Z0-9]/g, '')
+
+export const isValidPlaca = (value) => PLACA_REGEX.test(normalizarPlaca(value))
+
+export const tipoPlaca = (value) => {
+  const placa = normalizarPlaca(value)
+  if (!isValidPlaca(placa)) return null
+  return /\d/.test(placa[4]) ? 'antiga' : 'Mercosul'
+}
+
+export const isValidCep = (value) => onlyDigits(value).length === 8

@@ -1,5 +1,7 @@
 rules_version = '2';
 
+// Os tamanhos máximos espelham src/lib/limites.js (o teste limites.test.js confere).
+// Os cálculos do contrato rodam no navegador; aqui só validamos dono, formato e tamanho.
 service cloud.firestore {
   match /databases/{database}/documents {
 
@@ -20,6 +22,64 @@ service cloud.firestore {
         && request.resource.data[name].size() <= maxSize;
     }
 
+    // Campo de texto opcional dentro de um map.
+    function texto(m, key, maxSize) {
+      return !(key in m) || (m[key] is string && m[key].size() <= maxSize);
+    }
+
+    function numero(m, key) {
+      return !(key in m) || m[key] is number;
+    }
+
+    function enderecoValido(e) {
+      return e is map
+        && e.keys().hasOnly(['cep', 'logradouro', 'numero', 'complemento', 'bairro', 'cidade', 'uf'])
+        && texto(e, 'cep', 9)
+        && texto(e, 'logradouro', 120)
+        && texto(e, 'numero', 10)
+        && texto(e, 'complemento', 60)
+        && texto(e, 'bairro', 60)
+        && texto(e, 'cidade', 60)
+        && texto(e, 'uf', 2);
+    }
+
+    function detalhesValidos(d) {
+      return d is map
+        && d.keys().hasOnly([
+          'convenio', 'renda',
+          'placa', 'veiculo', 'anoModelo', 'codigoFipe', 'valorFipe', 'referenciaFipe',
+          'tipoImovel', 'valorImovel',
+          'valorPix', 'iofFinanciado'])
+        && texto(d, 'convenio', 60)
+        && texto(d, 'placa', 8)
+        && texto(d, 'veiculo', 120)
+        && texto(d, 'codigoFipe', 10)
+        && texto(d, 'referenciaFipe', 40)
+        && texto(d, 'tipoImovel', 30)
+        && numero(d, 'renda')
+        && numero(d, 'anoModelo')
+        && numero(d, 'valorFipe')
+        && numero(d, 'valorImovel')
+        && numero(d, 'valorPix')
+        && (!('iofFinanciado' in d) || d.iofFinanciado is bool);
+    }
+
+    // Rules não permitem laço; conferimos o formato da primeira e da última parcela.
+    function parcelaValida(p) {
+      return p is map
+        && p.keys().hasOnly(['numero', 'vencimento', 'amortizacao', 'juros', 'valor', 'saldo', 'pagaEm', 'valorPago'])
+        && p.numero is int
+        && p.vencimento is string && p.vencimento.size() == 10
+        && p.valor is number;
+    }
+
+    function parcelasValidas(parcelas, prazo) {
+      return parcelas is list
+        && parcelas.size() == prazo
+        && parcelaValida(parcelas[0])
+        && parcelaValida(parcelas[parcelas.size() - 1]);
+    }
+
     match /clientes/{id} {
       allow read, delete: if isOwner();
 
@@ -31,9 +91,8 @@ service cloud.firestore {
         && stringField('email', 160)
         && stringField('telefone', 20)
         && stringField('cpf', 14)
-        && request.resource.data.endereco is map
-        && request.resource.data.endereco.keys().hasOnly(
-          ['cep', 'logradouro', 'numero', 'complemento', 'bairro', 'cidade', 'uf']);
+        && stringField('criadoEm', 30)
+        && enderecoValido(request.resource.data.endereco);
 
       allow update: if false;
     }
@@ -47,20 +106,27 @@ service cloud.firestore {
           'taxaMensal', 'prazo', 'sistema', 'dataContratacao', 'iof', 'cetMensal',
           'parcelas', 'criadoEm'])
         && request.resource.data.produto in ['pessoal', 'consignado', 'veiculo', 'imovel', 'pix']
-        && request.resource.data.detalhes is map
+        && stringField('clienteId', 40)
+        && stringField('clienteNome', 120)
+        && stringField('dataContratacao', 10)
+        && stringField('criadoEm', 30)
+        && detalhesValidos(request.resource.data.detalhes)
         && request.resource.data.valor is number
         && request.resource.data.valor > 0
-        && request.resource.data.valor <= 2000000
+        && request.resource.data.valor <= 2100000
+        && request.resource.data.taxaMensal is number
+        && request.resource.data.taxaMensal >= 0
+        && request.resource.data.taxaMensal <= 0.2
         && request.resource.data.prazo is int
+        && request.resource.data.prazo >= 1
         && request.resource.data.prazo <= 240
         && request.resource.data.sistema in ['PRICE', 'SAC']
-        && request.resource.data.parcelas is list
-        && request.resource.data.parcelas.size() == request.resource.data.prazo;
+        && parcelasValidas(request.resource.data.parcelas, request.resource.data.prazo);
 
-      // Só o cronograma de parcelas muda (registro de pagamento).
+      // Só o cronograma muda (registro de pagamento), mantendo o formato.
       allow update: if isOwner()
         && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['parcelas'])
-        && request.resource.data.parcelas.size() == resource.data.parcelas.size();
+        && parcelasValidas(request.resource.data.parcelas, resource.data.prazo);
     }
 
     match /{document=**} {

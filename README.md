@@ -35,6 +35,10 @@ React 19, Vite, React Router, Firebase (Firestore, Auth anônimo, Hosting), Vite
 
 Cada visitante entra com login anônimo e só enxerga os próprios dados — quem garante isso são as regras em `firestore.rules`, não o front.
 
+As regras também limitam tamanho e formato de cada campo. Os cálculos do contrato (parcelas, IOF, CET, encargos) rodam no navegador: o banco valida estrutura e dono, não refaz as contas. Para um sistema real esse cálculo iria para o servidor (ex.: Cloud Functions).
+
+Os dados ficam ligados a este navegador: limpar os dados do site ou trocar de navegador cria outro usuário anônimo, e os cadastros anteriores deixam de aparecer.
+
 ## Rodando local
 
 ```bash

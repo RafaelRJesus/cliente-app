@@ -9,6 +9,18 @@ import { saldoDevedor, situacaoContrato } from '../lib/credito'
 import { formatDateTime, formatMoney, today } from '../lib/format'
 import { perfis } from '../lib/perfis'
 
+const enderecoCompleto = (e) =>
+  e?.logradouro
+    ? [
+        `${e.logradouro}, ${e.numero}${e.complemento ? ` - ${e.complemento}` : ''}`,
+        e.bairro,
+        e.cidade && `${e.cidade}/${e.uf}`,
+        e.cep && `CEP ${e.cep}`,
+      ]
+        .filter(Boolean)
+        .join(' · ')
+    : ''
+
 // Ficha do cliente para a equipe: cadastro, acesso ao app e todos os contratos.
 export function ClienteDetalhe() {
   const { id } = useParams()
@@ -98,17 +110,7 @@ export function ClienteDetalhe() {
             </div>
             <div>
               <dt>Endereço</dt>
-              <dd>
-                {e?.logradouro ? (
-                  <>
-                    {e.logradouro}, {e.numero}
-                    {e.complemento ? ` - ${e.complemento}` : ''} · {e.bairro} · {e.cidade}
-                    /{e.uf} · CEP {e.cep}
-                  </>
-                ) : (
-                  '—'
-                )}
-              </dd>
+              <dd>{enderecoCompleto(e) || '—'}</dd>
             </div>
             <div>
               <dt>Cliente desde</dt>

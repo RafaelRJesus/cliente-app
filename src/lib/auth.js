@@ -41,10 +41,16 @@ const traduzir = (err) => {
   throw err instanceof ErroAuth ? err : new ErroAuth(err.code)
 }
 
-const paraUsuario = (u) =>
-  u
-    ? { uid: u.uid, email: u.email?.toLowerCase() ?? '', verificado: u.emailVerified }
-    : null
+async function paraUsuario(u) {
+  if (!u) return null
+  const { signInProvider } = await u.getIdTokenResult()
+  return {
+    uid: u.uid,
+    email: u.email?.toLowerCase() ?? '',
+    verificado: u.emailVerified,
+    provedor: signInProvider,
+  }
+}
 
 function firebaseAuth() {
   return {

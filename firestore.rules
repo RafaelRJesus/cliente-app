@@ -212,11 +212,34 @@ service cloud.firestore {
             && request.resource.data.email == request.auth.token.email)
         );
 
-      // Só para dar número a cadastro antigo, que ainda não tem.
-      allow update: if isEquipe()
-        && !('numero' in resource.data)
-        && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['numero'])
-        && numeroDoCliente();
+      // Equipe só altera duas coisas: o número de cadastro antigo (uma vez)
+      // e o contador de contratos do cliente (de 1 em 1, até 999).
+      allow update: if isEquipe() && (
+        (!('numero' in resource.data)
+          && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['numero'])
+          && numeroDoCliente())
+        ||
+        (request.resource.data.diff(resource.data).affectedKeys().hasOnly(['ultimoContrato'])
+          && request.resource.data.ultimoContrato == resource.data.get('ultimoContrato', 0) + 1
+          && request.resource.data.ultimoContrato <= 999));
+    }
+
+    // Número do contrato, 13 dígitos: PPP (produto) + CCCCCCC (número do
+    // cliente) + SSS (sequência do contrato daquele cliente). A sequência é o
+    // próximo do contador no cliente, que avança na mesma transação.
+    function numeroDoContrato() {
+      let caminho = /databases/$(database)/documents/clientes/$(request.resource.data.clienteId);
+      let antes = get(caminho).data;
+      let depois = getAfter(caminho).data;
+      let prefixo = {'pessoal': 101, 'consignado': 102, 'veiculo': 103, 'imovel': 104, 'pix': 105}[request.resource.data.produto];
+      return request.resource.data.sequencia is int
+        && request.resource.data.sequencia == antes.get('ultimoContrato', 0) + 1
+        && depois.get('ultimoContrato', 0) == request.resource.data.sequencia
+        && antes.numero is int
+        && request.resource.data.numeroContrato is string
+        && request.resource.data.numeroContrato.matches('^[0-9]{13}$')
+        && int(request.resource.data.numeroContrato)
+          == prefixo * 10000000000 + antes.numero * 1000 + request.resource.data.sequencia;
     }
 
     match /contratos/{id} {
@@ -227,9 +250,10 @@ service cloud.firestore {
         && request.resource.data.keys().hasOnly([
           'clienteId', 'clienteNome', 'produto', 'detalhes', 'valor',
           'taxaMensal', 'prazo', 'sistema', 'dataContratacao', 'iof', 'cetMensal',
-          'parcelas', 'criadoEm', 'criadoPor'])
+          'parcelas', 'criadoEm', 'criadoPor', 'numeroContrato', 'sequencia'])
         && request.resource.data.criadoPor == request.auth.uid
         && exists(/databases/$(database)/documents/clientes/$(request.resource.data.clienteId))
+        && numeroDoContrato()
         && request.resource.data.produto in ['pessoal', 'consignado', 'veiculo', 'imovel', 'pix']
         && stringField('clienteId', 11)
         && stringField('clienteNome', 120)

@@ -16,6 +16,7 @@ import {
   numerarClienteExistente,
   proximoNumeroLocal,
 } from './numeroCliente'
+import { gravarContratoNumerado, montarNumeroContrato } from './numeroContrato'
 import { ehEquipe } from './perfis'
 
 const byNewest = (a, b) => b.criadoEm.localeCompare(a.criadoEm)
@@ -51,6 +52,7 @@ function firestoreStore(name, perfil) {
         const numero = await gravarClienteNumerado(id, data)
         return { id, ...data, numero }
       }
+      if (name === 'contratos') return gravarContratoNumerado(data)
       const ref = await addDoc(col, data)
       return { id: ref.id, ...data }
     },
@@ -62,6 +64,27 @@ function firestoreStore(name, perfil) {
     // só clientes: dá número a cadastro antigo
     numerar: (id) => numerarClienteExistente(id),
   }
+}
+
+// Mesma numeração do Firestore, no localStorage: avança o contador no cliente.
+function proximoContratoLocal(contrato) {
+  const clientes = JSON.parse(localStorage.getItem('cliente-app:clientes') ?? '[]')
+  const cliente = clientes.find((c) => c.id === contrato.clienteId)
+  const sequencia = (cliente?.ultimoContrato ?? 0) + 1
+  const numeroContrato = montarNumeroContrato(
+    contrato.produto,
+    cliente?.numero,
+    sequencia,
+  )
+  localStorage.setItem(
+    'cliente-app:clientes',
+    JSON.stringify(
+      clientes.map((c) =>
+        c.id === contrato.clienteId ? { ...c, ultimoContrato: sequencia } : c,
+      ),
+    ),
+  )
+  return { numeroContrato, sequencia }
 }
 
 // Usado quando o Firebase não está configurado (.env.local ausente).
@@ -85,6 +108,7 @@ function localStore(name, perfil) {
       }
       const created = { ...item, id, criadoPor: perfil.uid }
       if (name === 'clientes') created.numero = proximoNumeroLocal()
+      if (name === 'contratos') Object.assign(created, proximoContratoLocal(item))
       write([created, ...read()])
       return created
     },

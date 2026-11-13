@@ -85,6 +85,29 @@ function cadastrar(db, caminho, dados, numero = 3) {
   return lote.commit()
 }
 
+// Contrata como o app: avança o contador do cliente e grava o contrato com
+// o número PPP + CCCCCCC + SSS na mesma transação.
+function contratar(db, clienteId, numeroCliente, sequencia = 1, extra = {}) {
+  const prefixo = {
+    pessoal: '101',
+    consignado: '102',
+    veiculo: '103',
+    imovel: '104',
+    pix: '105',
+  }
+  const dados = { ...contrato(clienteId, 'gestor'), ...extra }
+  const numeroContrato =
+    prefixo[dados.produto] +
+    String(numeroCliente).padStart(7, '0') +
+    String(sequencia).padStart(3, '0')
+  const lote = writeBatch(db)
+  lote.update(doc(db, `clientes/${clienteId}`), { ultimoContrato: sequencia })
+  const ref = doc(collection(db, 'contratos'))
+  lote.set(ref, { ...dados, numeroContrato, sequencia, ...extra })
+  return lote.commit().then(() => ref)
+}
+
+const CPF_ANTIGO = '01234567890'
 const CPF_MARIA = '52998224725'
 const CPF_JOAO = '11144477735'
 
@@ -110,10 +133,14 @@ async function semear() {
       doc(db, `clientes/${CPF_MARIA}`),
       cliente('maria@rj.test', CPF_MARIA, { criadoPor: 'gestor', numero: 1 }),
     )
-    // João é um cadastro antigo, de antes do número do cliente
     await setDoc(
       doc(db, `clientes/${CPF_JOAO}`),
-      cliente('joao@rj.test', CPF_JOAO, { criadoPor: 'gestor' }),
+      cliente('joao@rj.test', CPF_JOAO, { criadoPor: 'gestor', numero: 2 }),
+    )
+    // cadastro antigo, de antes do número do cliente
+    await setDoc(
+      doc(db, `clientes/${CPF_ANTIGO}`),
+      cliente('antigo@rj.test', CPF_ANTIGO, { criadoPor: 'gestor' }),
     )
     await setDoc(doc(db, 'usuarios/maria'), {
       papel: 'cliente',
@@ -221,9 +248,7 @@ describe('gestor', () => {
   })
 
   it('contrata para cliente existente e registra pagamento', async () => {
-    const ref = await assertSucceeds(
-      addDoc(collection(db(), 'contratos'), contrato(CPF_JOAO, 'gestor')),
-    )
+    const ref = await assertSucceeds(contratar(db(), CPF_JOAO, 2))
     const parcelas = [
       { ...parcela(1), pagaEm: '2026-12-13', valorPago: 350.5 },
       parcela(2),
@@ -247,9 +272,7 @@ describe('gestor', () => {
   })
 
   it('não contrata para CPF sem cadastro', async () => {
-    await assertFails(
-      addDoc(collection(db(), 'contratos'), contrato('39053344705', 'gestor')),
-    )
+    await assertFails(contratar(db(), '39053344705', 3))
   })
 
   it('perde o acesso quando o admin remove o convite', async () => {
@@ -348,12 +371,12 @@ describe('número do cliente', () => {
   it('equipe numera cadastro antigo sem número, uma vez só', async () => {
     const lote = writeBatch(gestor())
     lote.update(doc(gestor(), 'contadores/clientes'), { ultimo: 3 })
-    lote.update(doc(gestor(), `clientes/${CPF_JOAO}`), { numero: 3 })
+    lote.update(doc(gestor(), `clientes/${CPF_ANTIGO}`), { numero: 3 })
     await assertSucceeds(lote.commit())
 
     const denovo = writeBatch(gestor())
     denovo.update(doc(gestor(), 'contadores/clientes'), { ultimo: 4 })
-    denovo.update(doc(gestor(), `clientes/${CPF_JOAO}`), { numero: 4 })
+    denovo.update(doc(gestor(), `clientes/${CPF_ANTIGO}`), { numero: 4 })
     await assertFails(denovo.commit())
   })
 
@@ -363,6 +386,54 @@ describe('número do cliente', () => {
     lote.update(doc(maria, 'contadores/clientes'), { ultimo: 3 })
     lote.update(doc(maria, `clientes/${CPF_MARIA}`), { numero: 3 })
     await assertFails(lote.commit())
+  })
+})
+
+describe('número do contrato', () => {
+  const gestor = () => conta('gestor', 'gestor@rj.test')
+
+  it('PPP + número do cliente + sequência, e a sequência continua', async () => {
+    await assertSucceeds(contratar(gestor(), CPF_JOAO, 2, 1))
+    await assertSucceeds(contratar(gestor(), CPF_JOAO, 2, 2, { produto: 'pix' }))
+  })
+
+  it('sequência não pula nem repete', async () => {
+    await assertFails(contratar(gestor(), CPF_JOAO, 2, 2))
+    await assertSucceeds(contratar(gestor(), CPF_JOAO, 2, 1))
+    await assertFails(contratar(gestor(), CPF_JOAO, 2, 1))
+  })
+
+  it('prefixo tem de ser o do produto', async () => {
+    const lote = writeBatch(gestor())
+    lote.update(doc(gestor(), `clientes/${CPF_JOAO}`), { ultimoContrato: 1 })
+    lote.set(doc(collection(gestor(), 'contratos')), {
+      ...contrato(CPF_JOAO, 'gestor'),
+      numeroContrato: '1050000002001', // 105 = Pix, mas o produto é pessoal
+      sequencia: 1,
+    })
+    await assertFails(lote.commit())
+  })
+
+  it('número do cliente no meio tem de ser o dele', async () => {
+    await assertFails(contratar(gestor(), CPF_JOAO, 1, 1))
+  })
+
+  it('cliente sem número não recebe contrato', async () => {
+    await assertFails(contratar(gestor(), CPF_ANTIGO, 0, 1))
+  })
+
+  it('contrato sem número é recusado', async () => {
+    await assertFails(
+      addDoc(collection(gestor(), 'contratos'), contrato(CPF_JOAO, 'gestor')),
+    )
+  })
+
+  it('cliente não mexe no contador de contratos', async () => {
+    await assertFails(
+      updateDoc(doc(conta('maria', 'maria@rj.test'), `clientes/${CPF_MARIA}`), {
+        ultimoContrato: 1,
+      }),
+    )
   })
 })
 

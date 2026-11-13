@@ -14,6 +14,15 @@ App que montei para praticar e testar cenários de crédito pessoal fora do ambi
   - garantia de imóvel libera até 60% do valor do imóvel, em até 240 meses.
 - **Contratos** – a simulação vira contrato; cada parcela pode ser paga numa data escolhida, com multa de 2% e juros de mora de 1% a.m. pro rata.
 - **Visão geral** – saldo da carteira, parcelas vencidas e próximos vencimentos.
+- **Acesso por papel** – login por e-mail e senha, com confirmação do e-mail:
+
+  | Papel | Quem é | O que faz |
+  | --- | --- | --- |
+  | Admin | o dono do app (criado à mão no console) | tudo, e é o único que cadastra gestores |
+  | Gestor | e-mail liberado pelo admin | vê toda a carteira, cadastra clientes, contrata, registra pagamento |
+  | Cliente | cria a própria conta | vê só o próprio cadastro e contratos, simula e paga parcelas |
+
+  O cliente que já foi cadastrado pela equipe se liga ao cadastro quando o CPF e o e-mail da conta batem. Se o CPF não existe, ele mesmo preenche os dados.
 
 As fórmulas são as de mercado. Não reproduzem regra de nenhuma instituição.
 
@@ -31,13 +40,11 @@ Não existe API pública gratuita que consulte os dados de um veículo pela plac
 
 ## Stack
 
-React 19, Vite, React Router, Firebase (Firestore, Auth anônimo, Hosting), Vitest, ESLint e Prettier.
+React 19, Vite, React Router, Firebase (Firestore, Auth por e-mail e senha, Hosting), Vitest, ESLint e Prettier.
 
-Cada visitante entra com login anônimo e só enxerga os próprios dados — quem garante isso são as regras em `firestore.rules`, não o front.
+Quem garante o que cada papel vê são as regras em `firestore.rules`, não o front: o perfil fica em `usuarios/{uid}`, o cadastro do cliente usa o CPF como id (um cadastro por CPF) e tudo que depende de e-mail exige e-mail confirmado. As regras são testadas no emulador do Firestore (`npm run test:regras`, precisa de Java).
 
 As regras também limitam tamanho e formato de cada campo. Os cálculos do contrato (parcelas, IOF, CET, encargos) rodam no navegador: o banco valida estrutura e dono, não refaz as contas. Para um sistema real esse cálculo iria para o servidor (ex.: Cloud Functions).
-
-Os dados ficam ligados a este navegador: limpar os dados do site ou trocar de navegador cria outro usuário anônimo, e os cadastros anteriores deixam de aparecer.
 
 ## Rodando local
 
@@ -46,11 +53,18 @@ npm install
 npm run dev
 ```
 
-Sem `.env.local` o app salva tudo no `localStorage`, o que já basta pra testar. Para usar o Firestore, copie `.env.example` para `.env.local` e preencha com a config do seu projeto Firebase (precisa do Firestore e do login anônimo ativos).
+Sem `.env.local` o app salva tudo no `localStorage`, o que já basta pra testar. Nesse modo existe um admin de exemplo: **admin@rjbank.test / admin123** (não existe com Firebase).
+
+Para usar o Firestore, copie `.env.example` para `.env.local` e preencha com a config do seu projeto Firebase. No console:
+
+1. Authentication → Sign-in method: ative **E-mail/senha**.
+2. Crie sua conta pelo app, confirme o e-mail e anote o UID (Authentication → Users).
+3. Firestore → coleção `usuarios`, documento com id = seu UID, campos `papel: "admin"`, `email` (o seu, em minúsculas), `nome` e `criadoEm` (texto).
 
 ```bash
 npm test          # testes de cálculo e validação (Vitest)
 npm run test:e2e  # testes de tela (Playwright), com as APIs externas simuladas
+npm run test:regras  # regras do Firestore no emulador (precisa de Java)
 npm run lint
 npm run build
 npx firebase-tools deploy   # hosting + regras do Firestore
@@ -64,8 +78,8 @@ O deploy se protege sozinho (`firebase.json`):
   repositório da automação ao lado deste, em `../rj-bank-qa-automation`; na
   primeira vez instala as dependências sozinho.
 
-E a cada push no GitHub, o CI roda lint, unitários, os testes de tela deste
-repositório e as suítes de interface da automação de QA.
+E a cada push no GitHub, o CI roda lint, unitários, as regras no emulador, os
+testes de tela deste repositório e as suítes de interface da automação de QA.
 
 ## Organização
 

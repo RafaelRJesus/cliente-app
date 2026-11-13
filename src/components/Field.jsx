@@ -1,4 +1,4 @@
-export function Field({ label, name, error, required, as = 'input', ...props }) {
+export function Field({ label, name, error, hint, required, as = 'input', ...props }) {
   const Component = as
   return (
     <div className="field">
@@ -13,7 +13,11 @@ export function Field({ label, name, error, required, as = 'input', ...props }) 
         aria-invalid={Boolean(error)}
         {...props}
       />
-      {error && <p className="field-error">{error}</p>}
+      {error ? (
+        <p className="field-error">{error}</p>
+      ) : (
+        hint && <p className="field-hint">{hint}</p>
+      )}
     </div>
   )
 }

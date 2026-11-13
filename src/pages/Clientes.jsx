@@ -2,12 +2,28 @@ import { useMemo, useState } from 'react'
 import { Field } from '../components/Field'
 import { Toast } from '../components/Toast'
 import { useData } from '../context/DataContext'
-import { formatDateTime, maskCpf, maskPhone, onlyDigits } from '../lib/format'
+import { useCep } from '../hooks/useCep'
+import { formatDateTime, maskCep, maskCpf, maskPhone, onlyDigits } from '../lib/format'
 import { validateCliente } from '../lib/validators'
 
-const emptyForm = { nome: '', email: '', telefone: '', cpf: '', endereco: '' }
+const emptyForm = {
+  nome: '',
+  email: '',
+  telefone: '',
+  cpf: '',
+  cep: '',
+  logradouro: '',
+  numero: '',
+  complemento: '',
+  bairro: '',
+  cidade: '',
+  uf: '',
+}
 
-const masks = { cpf: maskCpf, telefone: maskPhone }
+const masks = { cpf: maskCpf, telefone: maskPhone, cep: maskCep }
+
+const enderecoResumido = ({ endereco: e }) =>
+  e?.cidade ? `${e.logradouro}, ${e.numero} · ${e.cidade}/${e.uf}` : null
 
 export function Clientes() {
   const { clientes, contratos } = useData()
@@ -16,6 +32,15 @@ export function Clientes() {
   const [saving, setSaving] = useState(false)
   const [search, setSearch] = useState('')
   const [message, setMessage] = useState(null)
+  const cep = useCep((endereco) => {
+    setForm((current) => ({ ...current, ...endereco }))
+    setErrors((current) => ({
+      ...current,
+      cep: undefined,
+      logradouro: undefined,
+      cidade: undefined,
+    }))
+  })
 
   const contratosPorCliente = useMemo(() => {
     const count = {}
@@ -37,8 +62,10 @@ export function Clientes() {
   function handleChange(event) {
     const { name, value } = event.target
     const mask = masks[name]
-    setForm((current) => ({ ...current, [name]: mask ? mask(value) : value }))
+    const next = mask ? mask(value) : value
+    setForm((current) => ({ ...current, [name]: next }))
     setErrors((current) => ({ ...current, [name]: undefined }))
+    if (name === 'cep' && onlyDigits(next).length === 8) cep.consultar(next)
   }
 
   async function handleSubmit(event) {
@@ -62,7 +89,15 @@ export function Clientes() {
         email: form.email.trim().toLowerCase(),
         telefone: form.telefone,
         cpf: form.cpf,
-        endereco: form.endereco.trim(),
+        endereco: {
+          cep: form.cep,
+          logradouro: form.logradouro.trim(),
+          numero: form.numero.trim(),
+          complemento: form.complemento.trim(),
+          bairro: form.bairro.trim(),
+          cidade: form.cidade.trim(),
+          uf: form.uf.trim().toUpperCase(),
+        },
         criadoEm: new Date().toISOString(),
       })
       setForm(emptyForm)
@@ -139,15 +174,71 @@ export function Clientes() {
                 placeholder="(51) 99999-9999"
               />
             </div>
-            <Field
-              label="Endereço"
-              name="endereco"
-              as="textarea"
-              rows={2}
-              value={form.endereco}
-              onChange={handleChange}
-              placeholder="Rua, número, bairro, cidade"
-            />
+            <fieldset className="fieldset">
+              <legend>Endereço</legend>
+              <div className="form-row form-row-cep">
+                <Field
+                  label="CEP"
+                  name="cep"
+                  required
+                  value={form.cep}
+                  inputMode="numeric"
+                  onChange={handleChange}
+                  error={errors.cep || cep.error}
+                  placeholder="00000-000"
+                  hint={cep.status === 'loading' ? 'Buscando endereço...' : undefined}
+                />
+                <Field
+                  label="Número"
+                  name="numero"
+                  required
+                  value={form.numero}
+                  onChange={handleChange}
+                  error={errors.numero}
+                />
+              </div>
+              <Field
+                label="Logradouro"
+                name="logradouro"
+                required
+                value={form.logradouro}
+                onChange={handleChange}
+                error={errors.logradouro}
+              />
+              <div className="form-row">
+                <Field
+                  label="Complemento"
+                  name="complemento"
+                  value={form.complemento}
+                  onChange={handleChange}
+                />
+                <Field
+                  label="Bairro"
+                  name="bairro"
+                  value={form.bairro}
+                  onChange={handleChange}
+                />
+              </div>
+              <div className="form-row form-row-uf">
+                <Field
+                  label="Cidade"
+                  name="cidade"
+                  required
+                  value={form.cidade}
+                  onChange={handleChange}
+                  error={errors.cidade}
+                />
+                <Field
+                  label="UF"
+                  name="uf"
+                  required
+                  value={form.uf}
+                  maxLength={2}
+                  onChange={handleChange}
+                  error={errors.uf}
+                />
+              </div>
+            </fieldset>
 
             <div className="actions">
               <button type="submit" className="btn btn-primary" disabled={saving}>
@@ -198,6 +289,9 @@ export function Clientes() {
                     <span className="muted">
                       {cliente.email} · {cliente.telefone}
                     </span>
+                    {enderecoResumido(cliente) && (
+                      <span className="muted">{enderecoResumido(cliente)}</span>
+                    )}
                     <span className="muted small">
                       Desde {formatDateTime(cliente.criadoEm)} · {qtdContratos}{' '}
                       contrato(s)

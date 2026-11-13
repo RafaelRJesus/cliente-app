@@ -1,67 +1,54 @@
-# Cadastro de Clientes
+# RJ Bank — simulador de crédito
 
-Aplicação web em **React + Vite** para cadastrar, listar e remover clientes, com persistência no **Cloud Firestore** e publicação no **Firebase Hosting**.
+App que montei para praticar e testar cenários de crédito pessoal fora do ambiente de trabalho: cadastro de clientes, simulação Price/SAC, geração de contrato e pagamento de parcelas com encargos de atraso.
 
-> Projeto de estudo/portfólio. Use apenas dados fictícios.
+**Demo:** https://cliente-app-1a979.web.app (use dados fictícios)
 
-## Funcionalidades
+## O que dá pra fazer
 
-- Cadastro com validação de campos obrigatórios (nome, e-mail, telefone) e formato de e-mail
-- Listagem ordenada do mais recente para o mais antigo
-- Remoção de clientes
-- Persistência no Firestore com **login anônimo**: cada visitante enxerga só os próprios cadastros
-- **Regras de segurança** no Firestore validando dono, campos permitidos e tamanhos
-- Modo offline/local: sem o Firebase configurado, os dados ficam no `localStorage` do navegador
+- **Clientes** – cadastro com validação de CPF (dígitos verificadores), máscara de CPF/telefone, busca e bloqueio de CPF duplicado.
+- **Simulador** – Price ou SAC, IOF de pessoa física (0,0082% a.d. + 0,38%), CET mensal/anual e cronograma completo.
+- **Contratos** – a simulação vira contrato; cada parcela pode ser paga numa data escolhida, com multa de 2% e juros de mora de 1% a.m. pro rata.
+- **Visão geral** – saldo da carteira, parcelas vencidas e próximos vencimentos.
 
-## Tecnologias
+As fórmulas são as de mercado. Não reproduzem regra de nenhuma instituição.
 
-React 19 · Vite · Firebase (Firestore, Authentication, Hosting) · ESLint
+## Stack
 
-## Estrutura
+React 19, Vite, React Router, Firebase (Firestore, Auth anônimo, Hosting), Vitest, ESLint e Prettier.
 
-```text
-src/
-├── App.jsx                         # Tela, formulário e validações
-└── services/
-    ├── firebase.js                 # Inicialização do Firebase e login anônimo
-    └── clientesRepository.js       # Acesso a dados (Firestore ou localStorage)
-firestore.rules                     # Regras de segurança do banco
-firestore.indexes.json              # Índices do Firestore (nenhum necessário)
-firebase.json                       # Configuração do Hosting e do Firestore
-```
+Cada visitante entra com login anônimo e só enxerga os próprios dados — quem garante isso são as regras em `firestore.rules`, não o front.
 
-## Como rodar localmente
+## Rodando local
 
 ```bash
 npm install
 npm run dev
 ```
 
-Sem configuração, o app já funciona salvando no navegador.
-
-### Conectando ao Firebase
-
-1. Crie um projeto no [Console do Firebase](https://console.firebase.google.com/).
-2. Ative o **Cloud Firestore** e, em **Authentication > Sign-in method**, ative o provedor **Anônimo**.
-3. Registre um app Web e copie a configuração do SDK.
-4. Copie `.env.example` para `.env.local` e preencha as variáveis.
-5. Rode `npm run dev` de novo. O selo no topo da tela muda para "Salvando no Firestore".
-
-## Deploy
+Sem `.env.local` o app salva tudo no `localStorage`, o que já basta pra testar. Para usar o Firestore, copie `.env.example` para `.env.local` e preencha com a config do seu projeto Firebase (precisa do Firestore e do login anônimo ativos).
 
 ```bash
-npm install -g firebase-tools
-firebase login
-firebase use --add            # escolha o projeto criado
+npm test          # testes de cálculo e validação
+npm run lint
 npm run build
-firebase deploy               # publica o Hosting, as regras e os índices
+npx firebase-tools deploy   # hosting + regras do Firestore
 ```
 
-## Scripts
+## Organização
 
-| Comando           | Descrição                         |
-| ----------------- | --------------------------------- |
-| `npm run dev`     | Servidor de desenvolvimento       |
-| `npm run build`   | Build de produção em `dist/`      |
-| `npm run preview` | Visualiza o build localmente      |
-| `npm run lint`    | Análise estática com ESLint       |
+```text
+src/
+  lib/         regras de crédito, validações, formatação, acesso a dados
+  hooks/       useCollection (CRUD em memória + store)
+  context/     dados compartilhados entre as telas
+  components/  peças reutilizáveis (Field, tabela de parcelas, toast…)
+  pages/       Visão geral, Clientes, Simulador, Contratos
+```
+
+## Próximos passos
+
+- [ ] Renegociação de contrato em atraso
+- [ ] Antecipação de parcelas com desconto de juros
+- [ ] Exportar cronograma em CSV
+- [ ] Testes de interface (Playwright)

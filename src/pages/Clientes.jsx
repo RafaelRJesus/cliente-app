@@ -4,7 +4,9 @@ import { ConfirmacaoInline } from '../components/ConfirmacaoInline'
 import { ClienteForm } from '../components/ClienteForm'
 import { Toast } from '../components/Toast'
 import { useData } from '../context/DataContext'
+import { buscarClientes } from '../lib/buscaCliente'
 import { formatDateTime, onlyDigits } from '../lib/format'
+import { formatarNumeroCliente } from '../lib/numeroCliente'
 
 const enderecoResumido = ({ endereco: e }) =>
   e?.cidade ? `${e.logradouro}, ${e.numero} · ${e.cidade}/${e.uf}` : null
@@ -21,16 +23,31 @@ export function Clientes() {
     return count
   }, [contratos.items])
 
-  const filtrados = useMemo(() => {
-    const term = search.trim().toLowerCase()
-    if (!term) return clientes.items
-    const digits = onlyDigits(term)
-    return clientes.items.filter(
-      (c) =>
-        c.nome.toLowerCase().includes(term) ||
-        (digits && onlyDigits(c.cpf).includes(digits)),
-    )
-  }, [clientes.items, search])
+  const filtrados = useMemo(
+    () => buscarClientes(clientes.items, search),
+    [clientes.items, search],
+  )
+
+  // Cadastros de antes do número do cliente: numera do mais antigo para o mais novo.
+  const semNumero = clientes.items.filter((c) => !c.numero)
+  const [numerando, setNumerando] = useState(false)
+
+  async function numerarAntigos() {
+    setNumerando(true)
+    try {
+      const ordem = [...semNumero].sort((a, b) => a.criadoEm.localeCompare(b.criadoEm))
+      for (const c of ordem) await clientes.numerar(c.id)
+      setMessage({ text: `${ordem.length} cliente(s) numerado(s).` })
+    } catch (err) {
+      console.error(err)
+      setMessage({
+        text: 'Não foi possível numerar todos. Tente de novo.',
+        type: 'error',
+      })
+    } finally {
+      setNumerando(false)
+    }
+  }
 
   // Devolve erros por campo para o formulário, ou nada quando gravou.
   async function salvar(cliente) {
@@ -83,6 +100,23 @@ export function Clientes() {
 
       <Toast message={message} onClose={() => setMessage(null)} />
 
+      {!clientes.loading && semNumero.length > 0 && (
+        <div className="aviso">
+          <span>
+            {semNumero.length} cliente(s) cadastrado(s) antes do número do cliente ainda
+            sem número.
+          </span>
+          <button
+            type="button"
+            className="btn btn-primary btn-sm"
+            onClick={numerarAntigos}
+            disabled={numerando}
+          >
+            {numerando ? 'Numerando...' : 'Numerar agora'}
+          </button>
+        </div>
+      )}
+
       <div className="grid-2">
         <section className="card">
           <h2>Novo cliente</h2>
@@ -105,7 +139,7 @@ export function Clientes() {
           <input
             className="search"
             type="search"
-            placeholder="Buscar por nome ou CPF"
+            placeholder="Buscar por nome, CPF ou nº do cliente"
             value={search}
             onChange={(e) => setSearch(e.target.value)}
           />
@@ -125,7 +159,9 @@ export function Clientes() {
                     <Link to={`/clientes/${cliente.id}`} className="nome-link">
                       <strong>{cliente.nome}</strong>
                     </Link>
-                    <span className="muted">CPF {cliente.cpf}</span>
+                    <span className="muted">
+                      Nº {formatarNumeroCliente(cliente.numero)} · CPF {cliente.cpf}
+                    </span>
                     <span className="muted">
                       {cliente.email} · {cliente.telefone}
                     </span>

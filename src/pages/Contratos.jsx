@@ -11,6 +11,7 @@ import { useData } from '../context/DataContext'
 import { carteiraPorCliente, totaisDosContratos } from '../lib/carteira'
 import { calcularAtraso, saldoDevedor, situacaoContrato } from '../lib/credito'
 import { formatDate, formatMoney, formatPercent, today } from '../lib/format'
+import { formatarNumeroContrato } from '../lib/numeroContrato'
 import { formasPara, nomeFormaPagamento } from '../lib/pagamento'
 import { nomeProduto } from '../lib/produtos'
 
@@ -225,7 +226,8 @@ function DetalheContrato({ contrato }) {
           </Link>
           <h1>{contrato.clienteNome}</h1>
           <p>
-            {nomeProduto(contrato)} · contrato {contrato.id.slice(0, 8).toUpperCase()} ·{' '}
+            {nomeProduto(contrato)} · contrato nº{' '}
+            <span className="numero-contrato">{formatarNumeroContrato(contrato)}</span> ·{' '}
             <StatusBadge status={situacaoContrato(contrato, hoje)} />
           </p>
         </div>

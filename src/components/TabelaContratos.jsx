@@ -1,5 +1,6 @@
 import { Link, useNavigate } from 'react-router-dom'
 import { formatDate, formatMoney } from '../lib/format'
+import { formatarNumeroContrato } from '../lib/numeroContrato'
 import { nomeProduto } from '../lib/produtos'
 import { StatusBadge } from './StatusBadge'
 
@@ -12,7 +13,8 @@ export function TabelaContratos({ linhas, mostrarCliente = true }) {
       <table className="table table-hover">
         <thead>
           <tr>
-            <th>{mostrarCliente ? 'Cliente' : 'Contrato'}</th>
+            <th>Contrato</th>
+            {mostrarCliente && <th>Cliente</th>}
             <th>Produto</th>
             <th>Contratação</th>
             <th>Sistema</th>
@@ -24,12 +26,23 @@ export function TabelaContratos({ linhas, mostrarCliente = true }) {
         <tbody>
           {linhas.map((c) => (
             <tr key={c.id} onClick={() => navigate(`/contratos/${c.id}`)}>
-              <td>
-                {/* o link dá acesso por teclado e leitor de tela; a linha toda segue clicável */}
-                <Link to={`/contratos/${c.id}`} className="row-link">
-                  {mostrarCliente ? c.clienteNome : c.id.slice(0, 8).toUpperCase()}
-                </Link>
+              <td className="numero-contrato">
+                {mostrarCliente ? (
+                  formatarNumeroContrato(c)
+                ) : (
+                  <Link to={`/contratos/${c.id}`} className="row-link">
+                    {formatarNumeroContrato(c)}
+                  </Link>
+                )}
               </td>
+              {mostrarCliente && (
+                <td>
+                  {/* o link dá acesso por teclado e leitor de tela; a linha toda segue clicável */}
+                  <Link to={`/contratos/${c.id}`} className="row-link">
+                    {c.clienteNome}
+                  </Link>
+                </td>
+              )}
               <td>{nomeProduto(c)}</td>
               <td>{formatDate(c.dataContratacao)}</td>
               <td>

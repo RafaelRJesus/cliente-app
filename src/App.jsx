@@ -12,6 +12,7 @@ import { Contratos } from './pages/Contratos'
 import { Dashboard } from './pages/Dashboard'
 import { Gestores } from './pages/Gestores'
 import { Simulador } from './pages/Simulador'
+import { Usuarios } from './pages/Usuarios'
 
 export default function App() {
   const { user, perfil, carregando, equipe, admin, erro, sair } = useAuth()
@@ -54,6 +55,7 @@ export default function App() {
           />
           {equipe && <Route path="clientes" element={<Clientes />} />}
           {admin && <Route path="gestores" element={<Gestores />} />}
+          {admin && <Route path="usuarios" element={<Usuarios />} />}
           <Route path="simulador" element={<Simulador />} />
           <Route path="contratos" element={<Contratos />} />
           <Route path="contratos/:id" element={<Contratos />} />

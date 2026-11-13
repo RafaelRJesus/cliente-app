@@ -5,6 +5,8 @@ const variants = {
   paga: 'ok',
   aberta: 'neutral',
   vencida: 'danger',
+  ativo: 'ok',
+  bloqueado: 'danger',
 }
 
 export function StatusBadge({ status }) {

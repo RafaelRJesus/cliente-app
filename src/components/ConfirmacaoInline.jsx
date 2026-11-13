@@ -2,6 +2,7 @@ export function ConfirmacaoInline({
   titulo,
   children,
   rotuloConfirmar = 'Sim, excluir',
+  rotuloOcupado = 'Excluindo...',
   ocupado = false,
   onConfirmar,
   onCancelar,
@@ -18,7 +19,7 @@ export function ConfirmacaoInline({
           disabled={ocupado}
           autoFocus
         >
-          {ocupado ? 'Excluindo...' : rotuloConfirmar}
+          {ocupado ? rotuloOcupado : rotuloConfirmar}
         </button>
         <button type="button" className="btn btn-ghost btn-sm" onClick={onCancelar}>
           Cancelar

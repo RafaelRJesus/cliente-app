@@ -56,6 +56,17 @@ npm run build
 npx firebase-tools deploy   # hosting + regras do Firestore
 ```
 
+O deploy se protege sozinho (`firebase.json`):
+
+- **antes**: lint, testes unitários e build. Se algo falhar, nada sobe.
+- **depois**: o smoke da [automação de QA](https://github.com/RafaelRJesus/rj-bank-qa-automation)
+  roda contra o site publicado (`scripts/smoke-producao.sh`). Ele espera o
+  repositório da automação ao lado deste, em `../rj-bank-qa-automation`; na
+  primeira vez instala as dependências sozinho.
+
+E a cada push no GitHub, o CI roda lint, unitários, os testes de tela deste
+repositório e as suítes de interface da automação de QA.
+
 ## Organização
 
 ```text

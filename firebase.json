@@ -1,6 +1,14 @@
 {
   "hosting": {
     "public": "dist",
+    "predeploy": [
+      "npm --prefix \"$PROJECT_DIR\" run lint",
+      "npm --prefix \"$PROJECT_DIR\" test",
+      "npm --prefix \"$PROJECT_DIR\" run build"
+    ],
+    "postdeploy": [
+      "bash \"$PROJECT_DIR/scripts/smoke-producao.sh\""
+    ],
     "ignore": [
       "firebase.json",
       "**/.*",

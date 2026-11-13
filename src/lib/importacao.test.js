@@ -61,10 +61,10 @@ describe('lerLinhas', () => {
   it('devolve o zero que o Excel tira de CPF e CEP numéricos', () => {
     const { linhas } = lerLinhas([
       cabecalho,
-      ['Ana', 7576960317, 'a@b.com', 51988887777, 1001000, 10],
+      ['Ana', 1234567890, 'a@b.com', 51988887777, 1001000, 10],
     ])
     expect(linhas[0].dados).toMatchObject({
-      cpf: '07576960317',
+      cpf: '01234567890',
       cep: '01001000',
       numero: '10',
     })

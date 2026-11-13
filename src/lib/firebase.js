@@ -13,27 +13,18 @@ const config = {
 
 export const firebaseEnabled = Boolean(config.apiKey && config.projectId)
 
-let db = null
-let auth = null
+const app = firebaseEnabled ? initializeApp(config) : null
+export const db = app ? getFirestore(app) : null
+const auth = app ? getAuth(app) : null
 
-if (firebaseEnabled) {
-  const app = initializeApp(config)
-  db = getFirestore(app)
-  auth = getAuth(app)
-}
+let userPromise
 
-let userPromise = null
-
-// Login anônimo: cada visitante ganha um UID e só enxerga os próprios cadastros
-// (garantido pelas regras em firestore.rules).
+// Cada visitante recebe um uid anônimo; as regras do Firestore usam esse uid
+// para isolar os dados de cada um.
 export function getCurrentUser() {
   if (!auth) return Promise.resolve(null)
-  if (!userPromise) {
-    userPromise = auth.currentUser
-      ? Promise.resolve(auth.currentUser)
-      : signInAnonymously(auth).then((cred) => cred.user)
-  }
+  userPromise ??= auth.currentUser
+    ? Promise.resolve(auth.currentUser)
+    : signInAnonymously(auth).then((cred) => cred.user)
   return userPromise
 }
-
-export { db }

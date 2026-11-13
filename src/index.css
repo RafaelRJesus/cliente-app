@@ -769,3 +769,19 @@ h2 {
   background: var(--red);
   color: #fff;
 }
+
+.row-link {
+  color: var(--title);
+  font-weight: 600;
+  text-decoration: none;
+}
+
+.row-link:hover,
+.row-link:focus-visible {
+  text-decoration: underline;
+}
+
+:focus-visible {
+  outline: 2px solid var(--green);
+  outline-offset: 2px;
+}

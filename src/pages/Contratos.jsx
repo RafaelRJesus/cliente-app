@@ -94,7 +94,12 @@ function ListaContratos() {
               <tbody>
                 {visiveis.map((c) => (
                   <tr key={c.id} onClick={() => navigate(`/contratos/${c.id}`)}>
-                    <td>{c.clienteNome}</td>
+                    <td>
+                      {/* o link dá acesso por teclado e leitor de tela; a linha toda segue clicável */}
+                      <Link to={`/contratos/${c.id}`} className="row-link">
+                        {c.clienteNome}
+                      </Link>
+                    </td>
                     <td>{nomeProduto(c)}</td>
                     <td>{formatDate(c.dataContratacao)}</td>
                     <td>

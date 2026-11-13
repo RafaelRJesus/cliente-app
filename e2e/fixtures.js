@@ -54,8 +54,17 @@ export async function cadastrarCliente(page, nome = 'Ana Teste', cpf = '11144477
 
 export async function contratar(page, nome = 'Ana Teste') {
   await page.getByRole('link', { name: 'Simulador de crédito' }).click()
-  const opcao = page.getByLabel('Cliente').locator('option', { hasText: nome })
-  await page.getByLabel('Cliente').selectOption(await opcao.getAttribute('value'))
+  await escolherCliente(page, nome)
   await page.getByRole('button', { name: 'Contratar' }).click()
   await expect(page).toHaveURL(/\/contratos\/.+/)
+}
+
+// Busca o cliente no simulador e escolhe na lista de sugestões.
+export async function escolherCliente(page, termo, nome = termo) {
+  await page.getByRole('combobox', { name: 'Cliente' }).fill(termo)
+  await page
+    .getByRole('option', { name: new RegExp(nome) })
+    .first()
+    .click()
+  await expect(page.getByTestId('cliente-escolhido')).toContainText(nome)
 }

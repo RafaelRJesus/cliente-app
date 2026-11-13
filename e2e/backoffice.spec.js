@@ -99,7 +99,7 @@ test('carteira por cliente agrupa os contratos e abre a ficha', async ({ page })
   ).toHaveCount(2)
 
   await page.getByRole('link', { name: 'Nova simulação' }).click()
-  await expect(page.getByLabel('Cliente')).toHaveValue('11144477735')
+  await expect(page.getByTestId('cliente-escolhido')).toContainText('Ana Teste')
 })
 
 test('gestor vê a carteira por cliente mas não a tela de usuários', async ({ page }) => {

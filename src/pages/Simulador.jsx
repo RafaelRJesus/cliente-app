@@ -374,13 +374,17 @@ export function Simulador() {
 function ReferenciaMercado({ mercado, referencia, obs, taxaManual, onUsar }) {
   if (mercado.carregando)
     return <p className="field-hint">Buscando taxas no Banco Central...</p>
-  if (mercado.erro || !referencia) {
+  if (mercado.erro) {
     return (
       <p className="field-hint">
-        Taxa de mercado indisponível; usando taxa padrão do produto.
+        Banco Central não respondeu; usando a taxa padrão do produto.{' '}
+        <button type="button" className="link-button" onClick={mercado.tentarDeNovo}>
+          Tentar de novo
+        </button>
       </p>
     )
   }
+  if (!referencia) return null
 
   return (
     <div className="referencia">

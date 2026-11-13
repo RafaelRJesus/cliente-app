@@ -219,6 +219,19 @@ describe('gestor', () => {
     await assertFails(updateDoc(ref, { valor: 1 }))
   })
 
+  it('registra a forma de pagamento, só entre as aceitas', async () => {
+    const pagar = (formaPagamento) =>
+      updateDoc(doc(db(), 'contratos/do-joao'), {
+        parcelas: [
+          { ...parcela(1), pagaEm: '2026-12-13', valorPago: 350.5, formaPagamento },
+          parcela(2),
+          parcela(3),
+        ],
+      })
+    await assertFails(pagar('cheque'))
+    await assertSucceeds(pagar('dinheiro'))
+  })
+
   it('não contrata para CPF sem cadastro', async () => {
     await assertFails(
       addDoc(collection(db(), 'contratos'), contrato('39053344705', 'gestor')),

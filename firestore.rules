@@ -100,7 +100,10 @@ service cloud.firestore {
     // Rules não permitem laço; conferimos o formato da primeira e da última parcela.
     function parcelaValida(p) {
       return p is map
-        && p.keys().hasOnly(['numero', 'vencimento', 'amortizacao', 'juros', 'valor', 'saldo', 'pagaEm', 'valorPago'])
+        && p.keys().hasOnly(['numero', 'vencimento', 'amortizacao', 'juros', 'valor', 'saldo',
+          'pagaEm', 'valorPago', 'formaPagamento'])
+        && (!('formaPagamento' in p)
+          || p.formaPagamento in ['pix', 'credito', 'debito', 'boleto', 'dinheiro'])
         && p.numero is int
         && p.vencimento is string && p.vencimento.size() == 10
         && p.valor is number;

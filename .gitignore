@@ -35,3 +35,10 @@ firestore-debug.log
 
 # Temporário
 .deploy-tmp/
+
+# Playwright
+playwright-report/
+test-results/
+
+# relatórios locais de QA
+qa-bug-hunt/

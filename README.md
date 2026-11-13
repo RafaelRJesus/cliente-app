@@ -49,7 +49,8 @@ npm run dev
 Sem `.env.local` o app salva tudo no `localStorage`, o que já basta pra testar. Para usar o Firestore, copie `.env.example` para `.env.local` e preencha com a config do seu projeto Firebase (precisa do Firestore e do login anônimo ativos).
 
 ```bash
-npm test          # testes de cálculo e validação
+npm test          # testes de cálculo e validação (Vitest)
+npm run test:e2e  # testes de tela (Playwright), com as APIs externas simuladas
 npm run lint
 npm run build
 npx firebase-tools deploy   # hosting + regras do Firestore

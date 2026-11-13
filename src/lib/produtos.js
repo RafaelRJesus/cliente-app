@@ -66,6 +66,8 @@ export const PRODUTOS = {
     valorMax: 10_000,
     prazoMax: 12,
     taxaPadrao: 6.5,
+    // quem recebe o Pix fica com o valor inteiro; o IOF entra na dívida
+    iofFinanciado: true,
     referenciaBcb: 'Cartão de crédito - parcelado - Prefixado',
     referenciaObs:
       'O BC ainda não publica taxa de Pix parcelado; usamos cartão parcelado como referência.',

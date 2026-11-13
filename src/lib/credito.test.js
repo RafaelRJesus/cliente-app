@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest'
 import {
   addMonths,
+  calcularIof,
   calcularAtraso,
   calcularCetMensal,
   gerarParcelas,
@@ -115,5 +116,34 @@ describe('atraso com data inválida', () => {
   it.each(['', null, undefined, 'abc'])('ignora encargos quando a data é %p', (data) => {
     const r = calcularAtraso({ valor: 1000, vencimento: '2026-03-10' }, data)
     expect(r).toEqual({ dias: 0, multa: 0, juros: 0, total: 1000 })
+  })
+})
+
+describe('IOF financiado (Pix parcelado)', () => {
+  const pix = {
+    valor: 500,
+    taxaMensal: 0.065,
+    prazo: 6,
+    sistema: 'PRICE',
+    dataContratacao: '2026-01-15',
+  }
+
+  it('quem recebe o Pix ganha o valor inteiro', () => {
+    const r = simular({ ...pix, iofFinanciado: true })
+    expect(r.valorLiberado).toBe(500)
+  })
+
+  it('o IOF entra no valor financiado e bate com o IOF das parcelas', () => {
+    const r = simular({ ...pix, iofFinanciado: true })
+    expect(r.valorFinanciado).toBeCloseTo(500 + r.iof, 2)
+    const amortizado = r.parcelas.reduce((acc, p) => acc + p.amortizacao, 0)
+    expect(amortizado).toBeCloseTo(r.valorFinanciado, 2)
+    expect(calcularIof(r.parcelas, pix.dataContratacao)).toBeCloseTo(r.iof, 1)
+  })
+
+  it('sem a opção, o IOF continua sendo descontado do valor liberado', () => {
+    const r = simular(pix)
+    expect(r.valorLiberado).toBeCloseTo(500 - r.iof, 2)
+    expect(r.valorFinanciado).toBe(500)
   })
 })

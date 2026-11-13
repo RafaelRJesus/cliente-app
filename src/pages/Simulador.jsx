@@ -59,6 +59,7 @@ export function Simulador() {
         prazo: params.prazo,
         sistema: form.sistema,
         dataContratacao: form.dataContratacao,
+        iofFinanciado: Boolean(regra.iofFinanciado),
       })
     : null
 
@@ -109,8 +110,8 @@ export function Simulador() {
         clienteId: cliente.id,
         clienteNome: cliente.nome,
         produto: form.produto,
-        detalhes: detalhesDoProduto(form, garantia),
-        valor: params.valor,
+        detalhes: detalhesDoProduto(form, garantia, params),
+        valor: resultado.valorFinanciado,
         taxaMensal: taxa / 100,
         prazo: params.prazo,
         sistema: form.sistema,
@@ -325,9 +326,15 @@ export function Simulador() {
                   <dd>{formatMoney(resultado.totalJuros)}</dd>
                 </div>
                 <div>
-                  <dt>IOF</dt>
+                  <dt>{regra.iofFinanciado ? 'IOF (financiado)' : 'IOF'}</dt>
                   <dd>{formatMoney(resultado.iof)}</dd>
                 </div>
+                {regra.iofFinanciado && (
+                  <div>
+                    <dt>Valor financiado (Pix + IOF)</dt>
+                    <dd>{formatMoney(resultado.valorFinanciado)}</dd>
+                  </div>
+                )}
                 <div>
                   <dt>Taxa anual</dt>
                   <dd>{formatPercent((1 + taxa / 100) ** 12 - 1)}</dd>
@@ -416,7 +423,7 @@ const formatPeriodo = (periodo) =>
     .map((d) => formatDate(d))
     .join(' a ')
 
-function detalhesDoProduto(form, garantia) {
+function detalhesDoProduto(form, garantia, params) {
   if (form.produto === 'consignado') {
     return {
       convenio: PRODUTOS.consignado.convenios[form.convenio].nome,
@@ -432,6 +439,9 @@ function detalhesDoProduto(form, garantia) {
       valorFipe: garantia.valorFipe,
       referenciaFipe: garantia.mesReferencia,
     }
+  }
+  if (form.produto === 'pix') {
+    return { valorPix: params.valor, iofFinanciado: true }
   }
   if (form.produto === 'imovel') {
     return {

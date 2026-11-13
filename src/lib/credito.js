@@ -86,18 +86,40 @@ export function calcularCetMensal(valorLiberado, parcelas) {
 
 export const anualizar = (taxaMensal) => (1 + taxaMensal) ** 12 - 1
 
-export function simular({ valor, taxaMensal, prazo, sistema, dataContratacao }) {
-  const parcelas = gerarParcelas({ valor, taxaMensal, prazo, sistema, dataContratacao })
-  const iof = calcularIof(parcelas, dataContratacao)
+// O IOF é proporcional ao valor financiado (mesmo cronograma, valores em escala).
+// Com iofFinanciado, financia-se V = valor / (1 - aliquota) para que quem recebe
+// fique com o valor pedido e o IOF entre na dívida.
+function valorComIofFinanciado({ valor, taxaMensal, prazo, sistema, dataContratacao }) {
+  const base = gerarParcelas({ valor, taxaMensal, prazo, sistema, dataContratacao })
+  const aliquota = calcularIof(base, dataContratacao) / valor
+  return round2(valor / (1 - aliquota))
+}
+
+export function simular({ iofFinanciado = false, ...params }) {
+  const { valor, taxaMensal, prazo, sistema, dataContratacao } = params
+  const valorFinanciado = iofFinanciado ? valorComIofFinanciado(params) : valor
+
+  const parcelas = gerarParcelas({
+    valor: valorFinanciado,
+    taxaMensal,
+    prazo,
+    sistema,
+    dataContratacao,
+  })
+  const iof = iofFinanciado
+    ? round2(valorFinanciado - valor)
+    : calcularIof(parcelas, dataContratacao)
+  const valorLiberado = iofFinanciado ? valor : round2(valor - iof)
   const totalPago = round2(parcelas.reduce((acc, p) => acc + p.valor, 0))
-  const cetMensal = calcularCetMensal(valor - iof, parcelas)
+  const cetMensal = calcularCetMensal(valorLiberado, parcelas)
 
   return {
     parcelas,
     iof,
-    valorLiberado: round2(valor - iof),
+    valorFinanciado,
+    valorLiberado,
     totalPago,
-    totalJuros: round2(totalPago - valor),
+    totalJuros: round2(totalPago - valorFinanciado),
     cetMensal,
     cetAnual: anualizar(cetMensal),
   }

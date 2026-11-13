@@ -318,6 +318,10 @@ function DetalhesProduto({ contrato }) {
       ['Veículo', `${d.veiculo} (${d.anoModelo})`],
       ['FIPE', `${formatMoney(d.valorFipe)} · ${d.codigoFipe} · ${d.referenciaFipe}`],
     ],
+    pix: [
+      ['Valor do Pix', formatMoney(d.valorPix)],
+      ['IOF financiado', formatMoney(contrato.valor - d.valorPix)],
+    ],
     imovel: [
       ['Imóvel', d.tipoImovel],
       ['Valor do imóvel', formatMoney(d.valorImovel)],

@@ -6,12 +6,16 @@ import {
   getDoc,
   getDocs,
   query,
-  setDoc,
   updateDoc,
   where,
 } from 'firebase/firestore'
 import { db, firebaseEnabled } from './firebase'
 import { onlyDigits } from './format'
+import {
+  gravarClienteNumerado,
+  numerarClienteExistente,
+  proximoNumeroLocal,
+} from './numeroCliente'
 import { ehEquipe } from './perfis'
 
 const byNewest = (a, b) => b.criadoEm.localeCompare(a.criadoEm)
@@ -44,9 +48,8 @@ function firestoreStore(name, perfil) {
       const data = { ...item, criadoPor: perfil.uid }
       const id = idDoItem(name, item)
       if (id) {
-        // setDoc num CPF que já existe seria uma alteração, que as regras recusam.
-        await setDoc(doc(col, id), data)
-        return { id, ...data }
+        const numero = await gravarClienteNumerado(id, data)
+        return { id, ...data, numero }
       }
       const ref = await addDoc(col, data)
       return { id: ref.id, ...data }
@@ -55,6 +58,9 @@ function firestoreStore(name, perfil) {
     update: (id, changes) => updateDoc(doc(col, id), changes),
 
     remove: (id) => deleteDoc(doc(col, id)),
+
+    // só clientes: dá número a cadastro antigo
+    numerar: (id) => numerarClienteExistente(id),
   }
 }
 
@@ -78,6 +84,7 @@ function localStore(name, perfil) {
         throw Object.assign(new Error('já existe'), { code: 'permission-denied' })
       }
       const created = { ...item, id, criadoPor: perfil.uid }
+      if (name === 'clientes') created.numero = proximoNumeroLocal()
       write([created, ...read()])
       return created
     },
@@ -88,6 +95,12 @@ function localStore(name, perfil) {
 
     async remove(id) {
       write(read().filter((item) => item.id !== id))
+    },
+
+    async numerar(id) {
+      const numero = proximoNumeroLocal()
+      write(read().map((item) => (item.id === id ? { ...item, numero } : item)))
+      return numero
     },
   }
 }

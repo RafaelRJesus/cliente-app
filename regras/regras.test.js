@@ -15,6 +15,7 @@ import {
   updateDoc,
   deleteDoc,
   addDoc,
+  writeBatch,
   where,
 } from 'firebase/firestore'
 import { afterAll, beforeAll, beforeEach, describe, it } from 'vitest'
@@ -76,6 +77,14 @@ const conta = (uid, email, verificado = true, provedor = 'password') =>
 
 const admin = (provedor = 'google.com') => conta('admin', 'admin@rj.test', true, provedor)
 
+// Grava o cliente com o próximo número e avança o contador, como o app faz.
+function cadastrar(db, caminho, dados, numero = 3) {
+  const lote = writeBatch(db)
+  lote.set(doc(db, 'contadores/clientes'), { ultimo: numero })
+  lote.set(doc(db, caminho), { ...dados, numero })
+  return lote.commit()
+}
+
 const CPF_MARIA = '52998224725'
 const CPF_JOAO = '11144477735'
 
@@ -83,6 +92,7 @@ const CPF_JOAO = '11144477735'
 async function semear() {
   await env.withSecurityRulesDisabled(async (ctx) => {
     const db = ctx.firestore()
+    await setDoc(doc(db, 'contadores/clientes'), { ultimo: 2 })
     await setDoc(doc(db, 'usuarios/admin'), {
       papel: 'admin',
       email: 'admin@rj.test',
@@ -98,8 +108,9 @@ async function semear() {
     await setDoc(doc(db, 'gestores/gestor@rj.test'), { nome: 'Gestor', criadoEm: agora })
     await setDoc(
       doc(db, `clientes/${CPF_MARIA}`),
-      cliente('maria@rj.test', CPF_MARIA, { criadoPor: 'gestor' }),
+      cliente('maria@rj.test', CPF_MARIA, { criadoPor: 'gestor', numero: 1 }),
     )
+    // João é um cadastro antigo, de antes do número do cliente
     await setDoc(
       doc(db, `clientes/${CPF_JOAO}`),
       cliente('joao@rj.test', CPF_JOAO, { criadoPor: 'gestor' }),
@@ -135,7 +146,7 @@ describe('sem login', () => {
     const db = env.unauthenticatedContext().firestore()
     await assertFails(getDocs(collection(db, 'clientes')))
     await assertFails(getDoc(doc(db, 'contratos/da-maria')))
-    await assertFails(setDoc(doc(db, `clientes/${CPF_MARIA}`), cliente('x@rj.test')))
+    await assertFails(cadastrar(db, `clientes/${CPF_MARIA}`, cliente('x@rj.test')))
   })
 })
 
@@ -181,8 +192,9 @@ describe('gestor', () => {
   it('cadastra cliente com o CPF como id', async () => {
     const cpf = '39053344705'
     await assertSucceeds(
-      setDoc(
-        doc(db(), `clientes/${cpf}`),
+      cadastrar(
+        db(),
+        `clientes/${cpf}`,
         cliente('ana@rj.test', cpf, { criadoPor: 'gestor' }),
       ),
     )
@@ -190,8 +202,9 @@ describe('gestor', () => {
 
   it('não cadastra cliente com id diferente do CPF', async () => {
     await assertFails(
-      setDoc(
-        doc(db(), 'clientes/39053344705'),
+      cadastrar(
+        db(),
+        'clientes/39053344705',
         cliente('ana@rj.test', CPF_JOAO, { criadoPor: 'gestor' }),
       ),
     )
@@ -199,8 +212,9 @@ describe('gestor', () => {
 
   it('não sobrescreve cliente existente', async () => {
     await assertFails(
-      setDoc(
-        doc(db(), `clientes/${CPF_MARIA}`),
+      cadastrar(
+        db(),
+        `clientes/${CPF_MARIA}`,
         cliente('outro@rj.test', CPF_MARIA, { criadoPor: 'gestor' }),
       ),
     )
@@ -295,6 +309,60 @@ describe('cliente', () => {
   it('não troca o próprio papel nem o CPF vinculado', async () => {
     await assertFails(updateDoc(doc(maria(), 'usuarios/maria'), { papel: 'gestor' }))
     await assertFails(updateDoc(doc(maria(), 'usuarios/maria'), { clienteId: CPF_JOAO }))
+  })
+})
+
+describe('número do cliente', () => {
+  const gestor = () => conta('gestor', 'gestor@rj.test')
+  const nova = (cpf) => cliente('nova@rj.test', cpf, { criadoPor: 'gestor' })
+
+  it('é o próximo do contador', async () => {
+    await assertSucceeds(
+      cadastrar(gestor(), 'clientes/39053344705', nova('39053344705'), 3),
+    )
+  })
+
+  it('não pula nem repete número', async () => {
+    await assertFails(cadastrar(gestor(), 'clientes/39053344705', nova('39053344705'), 4))
+    await assertFails(cadastrar(gestor(), 'clientes/39053344705', nova('39053344705'), 2))
+  })
+
+  it('não cadastra sem avançar o contador', async () => {
+    await assertFails(
+      setDoc(doc(gestor(), 'clientes/39053344705'), {
+        ...nova('39053344705'),
+        numero: 3,
+      }),
+    )
+  })
+
+  it('não cadastra sem número', async () => {
+    await assertFails(setDoc(doc(gestor(), 'clientes/39053344705'), nova('39053344705')))
+  })
+
+  it('contador só anda de 1 em 1', async () => {
+    await assertFails(updateDoc(doc(gestor(), 'contadores/clientes'), { ultimo: 10 }))
+    await assertFails(updateDoc(doc(gestor(), 'contadores/clientes'), { ultimo: 1 }))
+  })
+
+  it('equipe numera cadastro antigo sem número, uma vez só', async () => {
+    const lote = writeBatch(gestor())
+    lote.update(doc(gestor(), 'contadores/clientes'), { ultimo: 3 })
+    lote.update(doc(gestor(), `clientes/${CPF_JOAO}`), { numero: 3 })
+    await assertSucceeds(lote.commit())
+
+    const denovo = writeBatch(gestor())
+    denovo.update(doc(gestor(), 'contadores/clientes'), { ultimo: 4 })
+    denovo.update(doc(gestor(), `clientes/${CPF_JOAO}`), { numero: 4 })
+    await assertFails(denovo.commit())
+  })
+
+  it('cliente não numera o próprio cadastro', async () => {
+    const maria = conta('maria', 'maria@rj.test')
+    const lote = writeBatch(maria)
+    lote.update(doc(maria, 'contadores/clientes'), { ultimo: 3 })
+    lote.update(doc(maria, `clientes/${CPF_MARIA}`), { numero: 3 })
+    await assertFails(lote.commit())
   })
 })
 
@@ -413,10 +481,7 @@ describe('criação de conta', () => {
     const cpf = '39053344705'
     const db = conta('ana', 'ana@rj.test')
     await assertSucceeds(
-      setDoc(
-        doc(db, `clientes/${cpf}`),
-        cliente('ana@rj.test', cpf, { criadoPor: 'ana' }),
-      ),
+      cadastrar(db, `clientes/${cpf}`, cliente('ana@rj.test', cpf, { criadoPor: 'ana' })),
     )
     await assertSucceeds(
       setDoc(doc(db, 'usuarios/ana'), perfilCliente('ana@rj.test', cpf)),
@@ -426,8 +491,9 @@ describe('criação de conta', () => {
   it('cliente novo não cadastra outra pessoa', async () => {
     const db = conta('ana', 'ana@rj.test')
     await assertFails(
-      setDoc(
-        doc(db, 'clientes/39053344705'),
+      cadastrar(
+        db,
+        'clientes/39053344705',
         cliente('outra@rj.test', '39053344705', { criadoPor: 'ana' }),
       ),
     )

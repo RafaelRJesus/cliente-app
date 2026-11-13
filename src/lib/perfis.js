@@ -9,6 +9,7 @@ import {
 } from 'firebase/firestore'
 import { db, firebaseEnabled } from './firebase'
 import { onlyDigits } from './format'
+import { gravarClienteNumerado, proximoNumeroLocal } from './numeroCliente'
 
 // Perfil = papel de quem está logado: { uid, email, nome, papel, clienteId? }.
 // admin e gestor formam a "equipe" e enxergam a carteira toda.
@@ -79,7 +80,7 @@ function firestorePerfis() {
 
     async cadastrarCliente(user, cliente) {
       try {
-        await setDoc(doc(db, 'clientes', onlyDigits(cliente.cpf)), {
+        await gravarClienteNumerado(onlyDigits(cliente.cpf), {
           ...cliente,
           criadoPor: user.uid,
         })
@@ -168,7 +169,10 @@ function localPerfis() {
         )
       localStorage.setItem(
         'cliente-app:clientes',
-        JSON.stringify([{ ...cliente, id, criadoPor: user.uid }, ...clientes()]),
+        JSON.stringify([
+          { ...cliente, id, criadoPor: user.uid, numero: proximoNumeroLocal() },
+          ...clientes(),
+        ]),
       )
       return this.vincularCliente(user, cliente.cpf, cliente.nome)
     },

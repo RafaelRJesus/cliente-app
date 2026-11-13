@@ -160,6 +160,31 @@ service cloud.firestore {
       allow update: if false;
     }
 
+    // Número do cliente: contador único, que só anda de 1 em 1.
+    match /contadores/clientes {
+      allow read: if signedIn();
+      allow create: if emailConfirmado()
+        && request.resource.data.keys().hasOnly(['ultimo'])
+        && request.resource.data.ultimo == 1;
+      allow update: if emailConfirmado()
+        && request.resource.data.keys().hasOnly(['ultimo'])
+        && request.resource.data.ultimo == resource.data.ultimo + 1;
+    }
+
+    // O número gravado no cliente tem de ser o próximo do contador, e o
+    // contador tem de avançar na mesma gravação (transação).
+    function numeroDoCliente() {
+      return request.resource.data.numero is int
+        && request.resource.data.numero <= 9999999
+        && getAfter(/databases/$(database)/documents/contadores/clientes).data.ultimo
+          == request.resource.data.numero
+        && ((!exists(/databases/$(database)/documents/contadores/clientes)
+              && request.resource.data.numero == 1)
+          || (exists(/databases/$(database)/documents/contadores/clientes)
+              && get(/databases/$(database)/documents/contadores/clientes).data.ultimo + 1
+                == request.resource.data.numero));
+    }
+
     // O id do documento é o CPF só com números: garante um cadastro por CPF.
     match /clientes/{cpf} {
       allow read: if isEquipe() || isClienteDono(cpf);
@@ -170,8 +195,9 @@ service cloud.firestore {
         && request.resource.data.cpf is string
         && request.resource.data.cpf.replace('[^0-9]', '') == cpf
         && request.resource.data.keys().hasOnly(
-          ['nome', 'email', 'telefone', 'cpf', 'endereco', 'criadoEm', 'criadoPor'])
+          ['nome', 'email', 'telefone', 'cpf', 'endereco', 'criadoEm', 'criadoPor', 'numero'])
         && request.resource.data.criadoPor == request.auth.uid
+        && numeroDoCliente()
         && stringField('nome', 120)
         && request.resource.data.nome.size() > 0
         && stringField('email', 160)
@@ -186,7 +212,11 @@ service cloud.firestore {
             && request.resource.data.email == request.auth.token.email)
         );
 
-      allow update: if false;
+      // Só para dar número a cadastro antigo, que ainda não tem.
+      allow update: if isEquipe()
+        && !('numero' in resource.data)
+        && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['numero'])
+        && numeroDoCliente();
     }
 
     match /contratos/{id} {

@@ -47,5 +47,17 @@ export function useCollection(store) {
     [store],
   )
 
-  return { items, loading, error, add, update, remove }
+  // Dá número a um cadastro antigo (só a coleção de clientes tem).
+  const numerar = useCallback(
+    async (id) => {
+      const numero = await store.numerar(id)
+      setItems((current) =>
+        current.map((item) => (item.id === id ? { ...item, numero } : item)),
+      )
+      return numero
+    },
+    [store],
+  )
+
+  return { items, loading, error, add, update, remove, numerar }
 }

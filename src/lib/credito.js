@@ -39,18 +39,19 @@ export function gerarParcelas({ valor, taxaMensal, prazo, sistema, dataContratac
   const amortizacaoSac = valor / prazo
 
   for (let numero = 1; numero <= prazo; numero++) {
-    const juros = saldo * taxaMensal
-    let amortizacao = sistema === 'SAC' ? amortizacaoSac : pmt - juros
-    if (numero === prazo) amortizacao = saldo // fecha o arredondamento
+    const juros = round2(saldo * taxaMensal)
+    // a última parcela absorve a diferença de centavos dos arredondamentos
+    const amortizacao =
+      numero === prazo ? saldo : round2(sistema === 'SAC' ? amortizacaoSac : pmt - juros)
 
-    saldo -= amortizacao
+    saldo = round2(saldo - amortizacao)
     parcelas.push({
       numero,
       vencimento: addMonths(dataContratacao, numero),
-      amortizacao: round2(amortizacao),
-      juros: round2(juros),
+      amortizacao,
+      juros,
       valor: round2(amortizacao + juros),
-      saldo: round2(Math.max(saldo, 0)),
+      saldo,
       pagaEm: null,
       valorPago: null,
     })

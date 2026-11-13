@@ -50,6 +50,21 @@ describe('SAC', () => {
   })
 })
 
+describe('arredondamento', () => {
+  it.each(['PRICE', 'SAC'])(
+    '%s: soma das amortizações fecha no valor exato',
+    (sistema) => {
+      const parcelas = gerarParcelas({ ...base, sistema })
+      const centavos = parcelas.reduce(
+        (acc, p) => acc + Math.round(p.amortizacao * 100),
+        0,
+      )
+      expect(centavos).toBe(1_000_000)
+      expect(parcelas.at(-1).saldo).toBe(0)
+    },
+  )
+})
+
 describe('CET', () => {
   it('é igual à taxa nominal quando não há custos', () => {
     const parcelas = gerarParcelas({ ...base, sistema: 'PRICE' })

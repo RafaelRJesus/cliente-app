@@ -285,6 +285,44 @@ describe('cliente', () => {
   })
 })
 
+describe('bloqueio de usuários', () => {
+  it('admin bloqueia e desbloqueia cliente e gestor', async () => {
+    await assertSucceeds(updateDoc(doc(admin(), 'usuarios/maria'), { bloqueado: true }))
+    await assertSucceeds(updateDoc(doc(admin(), 'usuarios/maria'), { bloqueado: false }))
+    await assertSucceeds(updateDoc(doc(admin(), 'usuarios/gestor'), { bloqueado: true }))
+  })
+
+  it('admin lista todos os perfis', async () => {
+    await assertSucceeds(getDocs(collection(admin(), 'usuarios')))
+  })
+
+  it('admin não muda papel nem bloqueia outro admin', async () => {
+    await assertFails(updateDoc(doc(admin(), 'usuarios/maria'), { papel: 'gestor' }))
+    await assertFails(updateDoc(doc(admin(), 'usuarios/admin'), { bloqueado: true }))
+    await assertFails(updateDoc(doc(admin(), 'usuarios/maria'), { bloqueado: 'sim' }))
+  })
+
+  it('gestor não bloqueia ninguém', async () => {
+    await assertFails(
+      updateDoc(doc(conta('gestor', 'gestor@rj.test'), 'usuarios/maria'), {
+        bloqueado: true,
+      }),
+    )
+  })
+
+  it('cliente bloqueado não vê os próprios contratos', async () => {
+    await updateDoc(doc(admin(), 'usuarios/maria'), { bloqueado: true })
+    const maria = conta('maria', 'maria@rj.test')
+    await assertFails(getDoc(doc(maria, 'contratos/da-maria')))
+    await assertFails(getDoc(doc(maria, `clientes/${CPF_MARIA}`)))
+  })
+
+  it('gestor bloqueado perde a carteira', async () => {
+    await updateDoc(doc(admin(), 'usuarios/gestor'), { bloqueado: true })
+    await assertFails(getDocs(collection(conta('gestor', 'gestor@rj.test'), 'clientes')))
+  })
+})
+
 describe('criação de conta', () => {
   const perfilCliente = (email, clienteId) => ({
     papel: 'cliente',

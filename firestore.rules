@@ -29,12 +29,17 @@ service cloud.firestore {
         && request.auth.token.firebase.sign_in_provider == 'google.com';
     }
 
+    // Perfil existente e não bloqueado pelo admin.
+    function ativo() {
+      return temPerfil() && usuario().get('bloqueado', false) == false;
+    }
+
     // admin ou gestor: enxergam a carteira inteira. O gestor perde o acesso
-    // quando o admin apaga o convite dele.
+    // quando o admin apaga o convite dele ou bloqueia o usuário.
     function isEquipe() {
-      return temPerfil() && (isAdmin()
-        || (usuario().papel == 'gestor'
-          && exists(/databases/$(database)/documents/gestores/$(request.auth.token.email))));
+      return isAdmin()
+        || (ativo() && usuario().papel == 'gestor'
+          && exists(/databases/$(database)/documents/gestores/$(request.auth.token.email)));
     }
 
     function meuClienteId() {
@@ -42,7 +47,7 @@ service cloud.firestore {
     }
 
     function isClienteDono(clienteId) {
-      return temPerfil() && usuario().papel == 'cliente' && meuClienteId() == clienteId;
+      return ativo() && usuario().papel == 'cliente' && meuClienteId() == clienteId;
     }
 
     function stringField(name, maxSize) {
@@ -131,7 +136,13 @@ service cloud.firestore {
               == request.auth.token.email)
         );
 
-      allow update, delete: if false;
+      // O admin só liga/desliga o bloqueio, e nunca de outro admin.
+      allow update: if isAdmin()
+        && resource.data.papel != 'admin'
+        && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['bloqueado'])
+        && request.resource.data.bloqueado is bool;
+
+      allow delete: if false;
     }
 
     // Convites de gestor, pelo e-mail. Só o admin mexe.

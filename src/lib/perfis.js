@@ -1,4 +1,12 @@
-import { collection, deleteDoc, doc, getDoc, getDocs, setDoc } from 'firebase/firestore'
+import {
+  collection,
+  deleteDoc,
+  doc,
+  getDoc,
+  getDocs,
+  setDoc,
+  updateDoc,
+} from 'firebase/firestore'
 import { db, firebaseEnabled } from './firebase'
 import { onlyDigits } from './format'
 
@@ -10,6 +18,7 @@ export const ehEquipe = (perfil) =>
 
 export class ErroVinculo extends Error {}
 
+const BLOQUEADO = new ErroVinculo('Seu acesso está bloqueado. Fale com o administrador.')
 const REVOGADO = new ErroVinculo(
   'Seu acesso de gestor foi removido. Fale com o administrador.',
 )
@@ -26,9 +35,10 @@ function firestorePerfis() {
       const snap = await getDoc(doc(db, 'usuarios', user.uid))
       if (!snap.exists()) return null
       const perfil = { uid: user.uid, ...snap.data() }
-      if (perfil.papel === 'gestor' && !(await this.conviteDeGestor(user))) throw REVOGADO
       if (perfil.papel === 'admin' && user.provedor !== 'google.com')
         throw ADMIN_SO_GOOGLE
+      if (perfil.papel !== 'admin' && perfil.bloqueado) throw BLOQUEADO
+      if (perfil.papel === 'gestor' && !(await this.conviteDeGestor(user))) throw REVOGADO
       return perfil
     },
 
@@ -95,6 +105,15 @@ function firestorePerfis() {
       }),
 
     removerGestor: (email) => deleteDoc(doc(db, 'gestores', email)),
+
+    // Backoffice do admin
+    async listarUsuarios() {
+      const snap = await getDocs(collection(db, 'usuarios'))
+      return snap.docs.map((d) => ({ uid: d.id, ...d.data() }))
+    },
+
+    definirBloqueio: (uid, bloqueado) =>
+      updateDoc(doc(db, 'usuarios', uid), { bloqueado }),
   }
 }
 
@@ -112,6 +131,7 @@ function localPerfis() {
     async carregar(user) {
       const perfil = ler('rjbank:usuarios')[user.uid]
       if (!perfil) return null
+      if (perfil.papel !== 'admin' && perfil.bloqueado) throw BLOQUEADO
       if (perfil.papel === 'gestor' && !ler('rjbank:gestores')[user.email]) throw REVOGADO
       return { uid: user.uid, ...perfil }
     },
@@ -161,6 +181,14 @@ function localPerfis() {
         ...ler('rjbank:gestores'),
         [email.trim().toLowerCase()]: { nome, criadoEm: agora() },
       })
+    },
+
+    listarUsuarios: async () =>
+      Object.entries(ler('rjbank:usuarios')).map(([uid, p]) => ({ uid, ...p })),
+
+    async definirBloqueio(uid, bloqueado) {
+      const usuarios = ler('rjbank:usuarios')
+      gravar('rjbank:usuarios', { ...usuarios, [uid]: { ...usuarios[uid], bloqueado } })
     },
 
     async removerGestor(email) {

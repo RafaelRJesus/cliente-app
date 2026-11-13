@@ -1,0 +1,42 @@
+import { describe, expect, it } from 'vitest'
+import { maskCpf, maskPhone } from './format'
+import { isValidCpf, validateCliente } from './validators'
+
+describe('isValidCpf', () => {
+  it.each(['529.982.247-25', '52998224725', '111.444.777-35'])('aceita %s', (cpf) => {
+    expect(isValidCpf(cpf)).toBe(true)
+  })
+
+  it.each(['529.982.247-26', '111.111.111-11', '123', ''])('rejeita "%s"', (cpf) => {
+    expect(isValidCpf(cpf)).toBe(false)
+  })
+})
+
+describe('máscaras', () => {
+  it('formata CPF', () => {
+    expect(maskCpf('52998224725')).toBe('529.982.247-25')
+  })
+
+  it('formata celular e fixo', () => {
+    expect(maskPhone('51999998888')).toBe('(51) 99999-8888')
+    expect(maskPhone('5133334444')).toBe('(51) 3333-4444')
+  })
+})
+
+describe('validateCliente', () => {
+  const valido = {
+    nome: 'Maria Silva',
+    email: 'maria@email.com',
+    telefone: '(51) 99999-8888',
+    cpf: '529.982.247-25',
+  }
+
+  it('não retorna erros para um cliente válido', () => {
+    expect(validateCliente(valido)).toEqual({})
+  })
+
+  it('aponta os campos inválidos', () => {
+    const erros = validateCliente({ ...valido, email: 'maria', cpf: '111.111.111-11' })
+    expect(Object.keys(erros)).toEqual(['email', 'cpf'])
+  })
+})

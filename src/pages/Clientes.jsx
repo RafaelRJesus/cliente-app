@@ -71,9 +71,14 @@ export function Clientes() {
 
   return (
     <>
-      <header className="page-header">
-        <h1>Clientes</h1>
-        <p>Cadastro de clientes para usar nas simulações e contratos.</p>
+      <header className="page-header page-header-row">
+        <div>
+          <h1>Clientes</h1>
+          <p>Cadastro de clientes para usar nas simulações e contratos.</p>
+        </div>
+        <Link to="/clientes/importar" className="btn btn-ghost">
+          Importar planilha
+        </Link>
       </header>
 
       <Toast message={message} onClose={() => setMessage(null)} />

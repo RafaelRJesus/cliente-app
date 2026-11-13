@@ -966,3 +966,55 @@ h2 {
 .nome-link:hover strong {
   text-decoration: underline;
 }
+
+/* Importação de clientes */
+
+.dicas {
+  margin: 0 0 1rem;
+  padding-left: 1.2rem;
+  font-size: 0.9rem;
+}
+
+.arquivo {
+  position: relative;
+  display: grid;
+  gap: 0.25rem;
+  justify-items: center;
+  padding: 2rem 1rem;
+  border: 2px dashed var(--border);
+  border-radius: var(--radius);
+  text-align: center;
+  color: var(--title);
+  cursor: pointer;
+}
+
+.arquivo:hover,
+.arquivo:focus-within {
+  border-color: var(--green);
+  background: var(--green-soft);
+}
+
+/* o input cobre a área toda: clicar ou soltar o arquivo funciona igual */
+.arquivo input {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  opacity: 0;
+  cursor: pointer;
+}
+
+.arquivo.ocupado {
+  opacity: 0.6;
+  cursor: progress;
+}
+
+.progresso {
+  margin: 0 0 1rem;
+  font-weight: 600;
+  color: var(--title);
+}
+
+.table-wrap + .actions {
+  margin-top: 1rem;
+}

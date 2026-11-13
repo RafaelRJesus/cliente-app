@@ -12,6 +12,7 @@ import { Clientes } from './pages/Clientes'
 import { Contratos } from './pages/Contratos'
 import { Dashboard } from './pages/Dashboard'
 import { Gestores } from './pages/Gestores'
+import { ImportarClientes } from './pages/ImportarClientes'
 import { Simulador } from './pages/Simulador'
 import { Usuarios } from './pages/Usuarios'
 
@@ -55,6 +56,7 @@ export default function App() {
             element={equipe ? <Dashboard /> : <Navigate to="/contratos" replace />}
           />
           {equipe && <Route path="clientes" element={<Clientes />} />}
+          {equipe && <Route path="clientes/importar" element={<ImportarClientes />} />}
           {equipe && <Route path="clientes/:id" element={<ClienteDetalhe />} />}
           {admin && <Route path="gestores" element={<Gestores />} />}
           {admin && <Route path="usuarios" element={<Usuarios />} />}

@@ -7,6 +7,10 @@ const variants = {
   vencida: 'danger',
   ativo: 'ok',
   bloqueado: 'danger',
+  pronta: 'ok',
+  importada: 'ok',
+  ignorada: 'neutral',
+  'com erro': 'danger',
 }
 
 export function StatusBadge({ status }) {

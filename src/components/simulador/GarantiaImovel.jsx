@@ -1,5 +1,5 @@
 import { formatMoney } from '../../lib/format'
-import { PRODUTOS } from '../../lib/produtos'
+import { PRODUTOS, valorMaximo } from '../../lib/produtos'
 import { Field } from '../Field'
 
 const TIPOS = ['Casa', 'Apartamento', 'Sala comercial', 'Terreno']
@@ -38,7 +38,7 @@ export function GarantiaImovel({ garantia, onChange, erro }) {
       {valorImovel > 0 && (
         <p className="field-hint">
           Crédito até {Math.round(PRODUTOS.imovel.ltv * 100)}% do imóvel:{' '}
-          {formatMoney(valorImovel * PRODUTOS.imovel.ltv)}
+          {formatMoney(valorMaximo('imovel', { valorImovel }))}
         </p>
       )}
     </fieldset>

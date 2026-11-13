@@ -77,13 +77,16 @@ export const referenciaBcb = (produto, convenio) =>
     ? PRODUTOS.consignado.convenios[convenio]?.referenciaBcb
     : PRODUTOS[produto].referenciaBcb
 
+// Arredonda para baixo em centavos: o limite exibido é o mesmo que é validado.
+const centavosAbaixo = (n) => Math.floor(Math.round(n * 1e6) / 1e4) / 100
+
 export function valorMaximo(produto, garantia = {}) {
   const regra = PRODUTOS[produto]
   if (produto === 'veiculo' && garantia.valorFipe) {
-    return Math.min(regra.valorMax, Math.floor(garantia.valorFipe * regra.ltv))
+    return Math.min(regra.valorMax, centavosAbaixo(garantia.valorFipe * regra.ltv))
   }
   if (produto === 'imovel' && garantia.valorImovel) {
-    return Math.min(regra.valorMax, Math.floor(garantia.valorImovel * regra.ltv))
+    return Math.min(regra.valorMax, centavosAbaixo(garantia.valorImovel * regra.ltv))
   }
   return regra.valorMax
 }

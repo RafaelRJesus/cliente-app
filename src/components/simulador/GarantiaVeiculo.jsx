@@ -1,7 +1,7 @@
 import { useFipe } from '../../hooks/useFipe'
 import { TIPOS_VEICULO } from '../../lib/api/fipe'
 import { formatMoney, maskPlaca } from '../../lib/format'
-import { PRODUTOS } from '../../lib/produtos'
+import { PRODUTOS, valorMaximo } from '../../lib/produtos'
 import { isValidPlaca, tipoPlaca } from '../../lib/validators'
 import { Field } from '../Field'
 
@@ -106,7 +106,7 @@ export function GarantiaVeiculo({ garantia, onChange, erro }) {
           <strong>{formatMoney(garantia.valorFipe)}</strong>
           <span>
             Crédito até {Math.round(PRODUTOS.veiculo.ltv * 100)}% do valor:{' '}
-            {formatMoney(garantia.valorFipe * PRODUTOS.veiculo.ltv)}
+            {formatMoney(valorMaximo('veiculo', garantia))}
           </span>
         </div>
       )}

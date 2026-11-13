@@ -74,3 +74,20 @@ describe('lerNumero', () => {
     expect(lerNumero(entrada)).toBe(saida)
   })
 })
+
+describe('tamanho máximo dos campos do cliente', () => {
+  it('recusa nome acima do limite do banco', () => {
+    const erros = validateCliente({
+      nome: 'N'.repeat(121),
+      email: 'a@b.com',
+      telefone: '(51) 99999-8888',
+      cpf: '529.982.247-25',
+      cep: '01001-000',
+      logradouro: 'Praça da Sé',
+      numero: '1',
+      cidade: 'São Paulo',
+      uf: 'SP',
+    })
+    expect(erros).toEqual({ nome: 'Máximo de 120 caracteres.' })
+  })
+})

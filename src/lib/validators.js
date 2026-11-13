@@ -1,4 +1,5 @@
 import { onlyDigits } from './format'
+import { LIMITES_CLIENTE } from './limites'
 
 const EMAIL_REGEX = /^[^\s@]+@[^\s@]+\.[^\s@]+$/
 
@@ -42,6 +43,13 @@ export function validateCliente(form) {
   if (!form.numero?.trim()) errors.numero = 'Informe o número.'
   if (!form.cidade?.trim()) errors.cidade = 'Informe a cidade.'
   if (!/^[A-Za-z]{2}$/.test(form.uf ?? '')) errors.uf = 'UF inválida.'
+
+  // Segunda barreira além do maxLength dos inputs (ex.: valor colado por script).
+  for (const [campo, max] of Object.entries(LIMITES_CLIENTE)) {
+    if (!errors[campo] && (form[campo] ?? '').length > max) {
+      errors[campo] = `Máximo de ${max} caracteres.`
+    }
+  }
 
   return errors
 }

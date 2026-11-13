@@ -8,6 +8,7 @@ const base = { valor: 10_000, prazo: 24, taxa: 2, primeiraParcela: 500 }
 describe('valorMaximo', () => {
   it('limita o crédito com garantia de veículo a 70% da FIPE', () => {
     expect(valorMaximo('veiculo', { valorFipe: 50_000 })).toBe(35_000)
+    expect(valorMaximo('veiculo', { valorFipe: 54_246 })).toBe(37_972.2)
   })
 
   it('limita o home equity a 60% do imóvel', () => {

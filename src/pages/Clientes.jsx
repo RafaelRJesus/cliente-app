@@ -5,6 +5,7 @@ import { Toast } from '../components/Toast'
 import { useData } from '../context/DataContext'
 import { useCep } from '../hooks/useCep'
 import { formatDateTime, maskCep, maskCpf, maskPhone, onlyDigits } from '../lib/format'
+import { LIMITES_CLIENTE } from '../lib/limites'
 import { validateCliente } from '../lib/validators'
 
 const emptyForm = {
@@ -153,6 +154,7 @@ export function Clientes() {
             <Field
               label="Nome"
               name="nome"
+              maxLength={LIMITES_CLIENTE.nome}
               required
               value={form.nome}
               onChange={handleChange}
@@ -162,6 +164,7 @@ export function Clientes() {
             <Field
               label="CPF"
               name="cpf"
+              maxLength={LIMITES_CLIENTE.cpf}
               required
               value={form.cpf}
               inputMode="numeric"
@@ -173,6 +176,7 @@ export function Clientes() {
               <Field
                 label="E-mail"
                 name="email"
+                maxLength={LIMITES_CLIENTE.email}
                 type="email"
                 required
                 value={form.email}
@@ -183,6 +187,7 @@ export function Clientes() {
               <Field
                 label="Telefone"
                 name="telefone"
+                maxLength={LIMITES_CLIENTE.telefone}
                 type="tel"
                 required
                 value={form.telefone}
@@ -197,6 +202,7 @@ export function Clientes() {
                 <Field
                   label="CEP"
                   name="cep"
+                  maxLength={LIMITES_CLIENTE.cep}
                   required
                   value={form.cep}
                   inputMode="numeric"
@@ -208,6 +214,7 @@ export function Clientes() {
                 <Field
                   label="Número"
                   name="numero"
+                  maxLength={LIMITES_CLIENTE.numero}
                   required
                   value={form.numero}
                   onChange={handleChange}
@@ -217,6 +224,7 @@ export function Clientes() {
               <Field
                 label="Logradouro"
                 name="logradouro"
+                maxLength={LIMITES_CLIENTE.logradouro}
                 required
                 value={form.logradouro}
                 onChange={handleChange}
@@ -226,12 +234,14 @@ export function Clientes() {
                 <Field
                   label="Complemento"
                   name="complemento"
+                  maxLength={LIMITES_CLIENTE.complemento}
                   value={form.complemento}
                   onChange={handleChange}
                 />
                 <Field
                   label="Bairro"
                   name="bairro"
+                  maxLength={LIMITES_CLIENTE.bairro}
                   value={form.bairro}
                   onChange={handleChange}
                 />
@@ -240,6 +250,7 @@ export function Clientes() {
                 <Field
                   label="Cidade"
                   name="cidade"
+                  maxLength={LIMITES_CLIENTE.cidade}
                   required
                   value={form.cidade}
                   onChange={handleChange}
@@ -250,7 +261,7 @@ export function Clientes() {
                   name="uf"
                   required
                   value={form.uf}
-                  maxLength={2}
+                  maxLength={LIMITES_CLIENTE.uf}
                   onChange={handleChange}
                   error={errors.uf}
                 />

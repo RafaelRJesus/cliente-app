@@ -59,6 +59,7 @@ export function AuthProvider({ children }) {
     setPerfil,
     confirmarEmail,
     entrar: authService.entrar,
+    entrarComGoogle: authService.entrarComGoogle,
     criarConta: authService.criarConta,
     redefinirSenha: authService.redefinirSenha,
     reenviarConfirmacao: authService.reenviarConfirmacao,

@@ -1,15 +1,19 @@
 import {
+  GoogleAuthProvider,
   createUserWithEmailAndPassword,
   onAuthStateChanged,
   sendEmailVerification,
   sendPasswordResetEmail,
   signInWithEmailAndPassword,
+  signInWithPopup,
   signOut,
 } from 'firebase/auth'
 import { auth, firebaseEnabled } from './firebase'
 
 // Mesma interface com Firebase ou só no navegador (sem .env.local / testes de tela).
-// Usuário exposto ao app: { uid, email, verificado }.
+// Usuário exposto ao app: { uid, email, verificado, provedor }.
+// provedor = como a sessão foi aberta ('password' ou 'google.com'); o admin
+// só é aceito pelas regras quando entra com o Google.
 
 const MENSAGENS = {
   'auth/invalid-credential': 'E-mail ou senha incorretos.',
@@ -20,6 +24,10 @@ const MENSAGENS = {
   'auth/invalid-email': 'E-mail inválido.',
   'auth/too-many-requests': 'Muitas tentativas. Espere alguns minutos e tente de novo.',
   'auth/network-request-failed': 'Sem conexão. Verifique a internet.',
+  'auth/popup-blocked':
+    'O navegador bloqueou a janela do Google. Libere pop-ups e tente de novo.',
+  'auth/account-exists-with-different-credential':
+    'Esse e-mail já entra com senha. Use e-mail e senha.',
 }
 
 export class ErroAuth extends Error {
@@ -40,10 +48,21 @@ const paraUsuario = (u) =>
 
 function firebaseAuth() {
   return {
-    observar: (cb) => onAuthStateChanged(auth, (u) => cb(paraUsuario(u))),
+    observar: (cb) => onAuthStateChanged(auth, async (u) => cb(await paraUsuario(u))),
 
     entrar: (email, senha) =>
       signInWithEmailAndPassword(auth, email.trim(), senha).catch(traduzir),
+
+    // Fechar a janela do Google não é erro: só não entra.
+    entrarComGoogle: () =>
+      signInWithPopup(auth, new GoogleAuthProvider()).catch((err) => {
+        if (
+          err.code === 'auth/popup-closed-by-user' ||
+          err.code === 'auth/cancelled-popup-request'
+        )
+          return
+        traduzir(err)
+      }),
 
     async criarConta(email, senha) {
       const cred = await createUserWithEmailAndPassword(auth, email.trim(), senha).catch(
@@ -58,7 +77,7 @@ function firebaseAuth() {
     async recarregar() {
       await auth.currentUser.reload()
       await auth.currentUser.getIdToken(true)
-      return paraUsuario(auth.currentUser)
+      return await paraUsuario(auth.currentUser)
     },
 
     redefinirSenha: (email) => sendPasswordResetEmail(auth, email.trim()).catch(traduzir),
@@ -81,7 +100,9 @@ function localAuth() {
   const atual = () => {
     const uid = localStorage.getItem(SESSAO)
     const conta = ler(CONTAS, []).find((c) => c.uid === uid)
-    return conta ? { uid: conta.uid, email: conta.email, verificado: true } : null
+    return conta
+      ? { uid: conta.uid, email: conta.email, verificado: true, provedor: 'password' }
+      : null
   }
   const avisar = () => ouvintes.forEach((cb) => cb(atual()))
 
@@ -122,6 +143,7 @@ function localAuth() {
       avisar()
     },
 
+    entrarComGoogle: null, // não existe sem Firebase
     reenviarConfirmacao: async () => {},
     recarregar: async () => atual(),
     redefinirSenha: async () => {},

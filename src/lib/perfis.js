@@ -13,6 +13,9 @@ export class ErroVinculo extends Error {}
 const REVOGADO = new ErroVinculo(
   'Seu acesso de gestor foi removido. Fale com o administrador.',
 )
+const ADMIN_SO_GOOGLE = new ErroVinculo(
+  'O administrador entra só com o Google. Saia e use "Entrar com Google".',
+)
 
 const negado = (err) => err?.code === 'permission-denied'
 const agora = () => new Date().toISOString()
@@ -24,6 +27,8 @@ function firestorePerfis() {
       if (!snap.exists()) return null
       const perfil = { uid: user.uid, ...snap.data() }
       if (perfil.papel === 'gestor' && !(await this.conviteDeGestor(user))) throw REVOGADO
+      if (perfil.papel === 'admin' && user.provedor !== 'google.com')
+        throw ADMIN_SO_GOOGLE
       return perfil
     },
 

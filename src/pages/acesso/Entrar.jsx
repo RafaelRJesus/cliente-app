@@ -5,6 +5,7 @@ import { useAuth } from '../../context/AuthContext'
 import { ADMIN_LOCAL } from '../../lib/auth'
 import { storageMode } from '../../lib/store'
 import { AcessoLayout } from './AcessoLayout'
+import { BotaoGoogle } from './BotaoGoogle'
 
 export function Entrar() {
   const { entrar } = useAuth()
@@ -49,6 +50,7 @@ export function Entrar() {
           {enviando ? 'Entrando...' : 'Entrar'}
         </button>
       </form>
+      <BotaoGoogle />
       <p className="acesso-links">
         <Link to="/criar-conta">Criar conta</Link>
         <Link to="/esqueci-senha">Esqueci a senha</Link>

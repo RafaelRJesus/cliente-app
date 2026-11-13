@@ -4,6 +4,7 @@ import { Field } from '../../components/Field'
 import { useAuth } from '../../context/AuthContext'
 import { EMAIL_REGEX } from '../../lib/validators'
 import { AcessoLayout } from './AcessoLayout'
+import { BotaoGoogle } from './BotaoGoogle'
 
 export function CriarConta() {
   const { criarConta } = useAuth()
@@ -77,6 +78,7 @@ export function CriarConta() {
           {enviando ? 'Criando...' : 'Criar conta'}
         </button>
       </form>
+      <BotaoGoogle />
       <p className="acesso-links">
         <Link to="/entrar">Já tenho conta</Link>
       </p>

@@ -1,0 +1,30 @@
+rules_version = '2';
+
+service cloud.firestore {
+  match /databases/{database}/documents {
+    // Cada usuário (login anônimo) só lê, cria e apaga os próprios clientes.
+    match /clientes/{clienteId} {
+      allow read, delete: if request.auth != null
+        && resource.data.uid == request.auth.uid;
+
+      allow create: if request.auth != null
+        && request.resource.data.uid == request.auth.uid
+        && request.resource.data.nome is string
+        && request.resource.data.nome.size() > 0
+        && request.resource.data.nome.size() <= 120
+        && request.resource.data.email is string
+        && request.resource.data.email.size() <= 160
+        && request.resource.data.telefone is string
+        && request.resource.data.telefone.size() <= 30
+        && request.resource.data.keys().hasOnly(
+          ['uid', 'nome', 'email', 'telefone', 'cpf', 'endereco', 'criadoEm']
+        );
+
+      allow update: if false;
+    }
+
+    match /{document=**} {
+      allow read, write: if false;
+    }
+  }
+}

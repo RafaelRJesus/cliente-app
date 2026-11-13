@@ -1,16 +1,17 @@
 import { useMemo, useState } from 'react'
-import { Link, useNavigate, useParams } from 'react-router-dom'
+import { Link, useNavigate, useParams, useSearchParams } from 'react-router-dom'
 import { ConfirmacaoInline } from '../components/ConfirmacaoInline'
 import { ParcelasTable } from '../components/ParcelasTable'
 import { StatusBadge } from '../components/StatusBadge'
+import { TabelaContratos } from '../components/TabelaContratos'
+import { TabelaPorCliente } from '../components/TabelaPorCliente'
 import { Toast } from '../components/Toast'
 import { useAuth } from '../context/AuthContext'
 import { useData } from '../context/DataContext'
+import { carteiraPorCliente, totaisDosContratos } from '../lib/carteira'
 import { calcularAtraso, saldoDevedor, situacaoContrato } from '../lib/credito'
 import { formatDate, formatMoney, formatPercent, today } from '../lib/format'
-import { PRODUTOS } from '../lib/produtos'
-
-const nomeProduto = (c) => PRODUTOS[c.produto ?? 'pessoal']?.nome ?? c.produto
+import { nomeProduto } from '../lib/produtos'
 
 export function Contratos() {
   const { id } = useParams()
@@ -29,12 +30,16 @@ export function Contratos() {
   return contrato ? <DetalheContrato contrato={contrato} /> : <ListaContratos />
 }
 
+const SITUACOES = ['todos', 'em dia', 'em atraso', 'quitado']
+
 function ListaContratos() {
-  const { contratos } = useData()
+  const { contratos, clientes } = useData()
   const { equipe } = useAuth()
-  const navigate = useNavigate()
+  const [params, setParams] = useSearchParams()
   const [filtro, setFiltro] = useState('todos')
   const hoje = today()
+  // a visão fica na URL para dar para voltar e compartilhar
+  const porCliente = equipe && params.get('visao') === 'cliente'
 
   const linhas = useMemo(
     () =>
@@ -45,8 +50,19 @@ function ListaContratos() {
       })),
     [contratos.items, hoje],
   )
-  const visiveis =
-    filtro === 'todos' ? linhas : linhas.filter((c) => c.situacao === filtro)
+  const clientesComTotais = useMemo(
+    () => (porCliente ? carteiraPorCliente(clientes.items, contratos.items, hoje) : []),
+    [porCliente, clientes.items, contratos.items, hoje],
+  )
+  const totais = useMemo(
+    () => totaisDosContratos(contratos.items, hoje),
+    [contratos.items, hoje],
+  )
+
+  const filtrar = (lista) =>
+    filtro === 'todos' ? lista : lista.filter((c) => c.situacao === filtro)
+  const visiveis = filtrar(porCliente ? clientesComTotais : linhas)
+  const carregando = contratos.loading || (porCliente && clientes.loading)
 
   return (
     <>
@@ -55,7 +71,7 @@ function ListaContratos() {
           <h1>{equipe ? 'Contratos' : 'Meus contratos'}</h1>
           <p>
             {equipe
-              ? 'Contratos gerados a partir do simulador.'
+              ? 'Carteira de crédito: por contrato ou por cliente.'
               : 'Acompanhe suas parcelas e registre pagamentos.'}
           </p>
         </div>
@@ -64,64 +80,81 @@ function ListaContratos() {
         </Link>
       </header>
 
+      {equipe && (
+        <div className="kpis kpis-4">
+          <div className="kpi">
+            <span>Contratos ativos</span>
+            <strong>
+              {totais.ativos} de {totais.contratos}
+            </strong>
+          </div>
+          <div className="kpi">
+            <span>Valor contratado</span>
+            <strong>{formatMoney(totais.valorContratado)}</strong>
+          </div>
+          <div className="kpi">
+            <span>Saldo devedor</span>
+            <strong>{formatMoney(totais.saldo)}</strong>
+          </div>
+          <div className={totais.parcelasVencidas ? 'kpi kpi-danger' : 'kpi'}>
+            <span>Parcelas vencidas</span>
+            <strong>
+              {totais.parcelasVencidas} · {formatMoney(totais.valorVencido)}
+            </strong>
+          </div>
+        </div>
+      )}
+
       <section className="card">
-        <div className="tabs">
-          {['todos', 'em dia', 'em atraso', 'quitado'].map((opcao) => (
-            <button
-              key={opcao}
-              type="button"
-              className={filtro === opcao ? 'tab active' : 'tab'}
-              onClick={() => setFiltro(opcao)}
-            >
-              {opcao}
-            </button>
-          ))}
+        <div className="barra-filtros">
+          <div className="tabs">
+            {SITUACOES.map((opcao) => (
+              <button
+                key={opcao}
+                type="button"
+                className={filtro === opcao ? 'tab active' : 'tab'}
+                onClick={() => setFiltro(opcao)}
+              >
+                {opcao}
+              </button>
+            ))}
+          </div>
+          {equipe && (
+            <div className="alternar" role="group" aria-label="Visão da carteira">
+              <button
+                type="button"
+                aria-pressed={!porCliente}
+                onClick={() => setParams({}, { replace: true })}
+              >
+                Por contrato
+              </button>
+              <button
+                type="button"
+                aria-pressed={porCliente}
+                onClick={() => setParams({ visao: 'cliente' }, { replace: true })}
+              >
+                Por cliente
+              </button>
+            </div>
+          )}
         </div>
 
-        {contratos.loading && <p className="empty">Carregando...</p>}
-        {!contratos.loading && visiveis.length === 0 && (
-          <p className="empty">Nenhum contrato nesta situação.</p>
+        {carregando && <p className="empty">Carregando...</p>}
+        {!carregando && visiveis.length === 0 && (
+          <p className="empty">
+            {porCliente
+              ? 'Nenhum cliente nesta situação.'
+              : 'Nenhum contrato nesta situação.'}
+          </p>
         )}
 
-        {visiveis.length > 0 && (
-          <div className="table-wrap">
-            <table className="table table-hover">
-              <thead>
-                <tr>
-                  <th>Cliente</th>
-                  <th>Produto</th>
-                  <th>Contratação</th>
-                  <th>Sistema</th>
-                  <th className="num">Valor</th>
-                  <th className="num">Saldo devedor</th>
-                  <th>Situação</th>
-                </tr>
-              </thead>
-              <tbody>
-                {visiveis.map((c) => (
-                  <tr key={c.id} onClick={() => navigate(`/contratos/${c.id}`)}>
-                    <td>
-                      {/* o link dá acesso por teclado e leitor de tela; a linha toda segue clicável */}
-                      <Link to={`/contratos/${c.id}`} className="row-link">
-                        {c.clienteNome}
-                      </Link>
-                    </td>
-                    <td>{nomeProduto(c)}</td>
-                    <td>{formatDate(c.dataContratacao)}</td>
-                    <td>
-                      {c.sistema} · {c.prazo}x
-                    </td>
-                    <td className="num">{formatMoney(c.valor)}</td>
-                    <td className="num">{formatMoney(c.saldo)}</td>
-                    <td>
-                      <StatusBadge status={c.situacao} />
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
-        )}
+        {!carregando &&
+          visiveis.length > 0 &&
+          (porCliente ? (
+            <TabelaPorCliente linhas={visiveis} />
+          ) : (
+            <TabelaContratos linhas={visiveis} />
+          ))}
       </section>
     </>
   )

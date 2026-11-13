@@ -137,3 +137,7 @@ export function validarProduto(
 
   return errors
 }
+
+/** Nome do produto de um contrato (contratos antigos não têm o campo). */
+export const nomeProduto = (contrato) =>
+  PRODUTOS[contrato.produto ?? 'pessoal']?.nome ?? contrato.produto

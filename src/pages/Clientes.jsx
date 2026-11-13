@@ -1,0 +1,223 @@
+import { useMemo, useState } from 'react'
+import { Field } from '../components/Field'
+import { Toast } from '../components/Toast'
+import { useData } from '../context/DataContext'
+import { formatDateTime, maskCpf, maskPhone, onlyDigits } from '../lib/format'
+import { validateCliente } from '../lib/validators'
+
+const emptyForm = { nome: '', email: '', telefone: '', cpf: '', endereco: '' }
+
+const masks = { cpf: maskCpf, telefone: maskPhone }
+
+export function Clientes() {
+  const { clientes, contratos } = useData()
+  const [form, setForm] = useState(emptyForm)
+  const [errors, setErrors] = useState({})
+  const [saving, setSaving] = useState(false)
+  const [search, setSearch] = useState('')
+  const [message, setMessage] = useState(null)
+
+  const contratosPorCliente = useMemo(() => {
+    const count = {}
+    for (const c of contratos.items) count[c.clienteId] = (count[c.clienteId] ?? 0) + 1
+    return count
+  }, [contratos.items])
+
+  const filtrados = useMemo(() => {
+    const term = search.trim().toLowerCase()
+    if (!term) return clientes.items
+    const digits = onlyDigits(term)
+    return clientes.items.filter(
+      (c) =>
+        c.nome.toLowerCase().includes(term) ||
+        (digits && onlyDigits(c.cpf).includes(digits)),
+    )
+  }, [clientes.items, search])
+
+  function handleChange(event) {
+    const { name, value } = event.target
+    const mask = masks[name]
+    setForm((current) => ({ ...current, [name]: mask ? mask(value) : value }))
+    setErrors((current) => ({ ...current, [name]: undefined }))
+  }
+
+  async function handleSubmit(event) {
+    event.preventDefault()
+
+    const validation = validateCliente(form)
+    const cpfJaExiste = clientes.items.some(
+      (c) => onlyDigits(c.cpf) === onlyDigits(form.cpf),
+    )
+    if (!validation.cpf && cpfJaExiste) validation.cpf = 'CPF já cadastrado.'
+
+    if (Object.keys(validation).length) {
+      setErrors(validation)
+      return
+    }
+
+    setSaving(true)
+    try {
+      await clientes.add({
+        nome: form.nome.trim(),
+        email: form.email.trim().toLowerCase(),
+        telefone: form.telefone,
+        cpf: form.cpf,
+        endereco: form.endereco.trim(),
+        criadoEm: new Date().toISOString(),
+      })
+      setForm(emptyForm)
+      setMessage({ text: 'Cliente cadastrado.' })
+    } catch (err) {
+      console.error(err)
+      setMessage({ text: 'Erro ao salvar o cliente.', type: 'error' })
+    } finally {
+      setSaving(false)
+    }
+  }
+
+  async function handleRemove(cliente) {
+    try {
+      await clientes.remove(cliente.id)
+      setMessage({ text: `${cliente.nome} removido.` })
+    } catch (err) {
+      console.error(err)
+      setMessage({ text: 'Erro ao remover o cliente.', type: 'error' })
+    }
+  }
+
+  return (
+    <>
+      <header className="page-header">
+        <h1>Clientes</h1>
+        <p>Cadastro de clientes para usar nas simulações e contratos.</p>
+      </header>
+
+      <Toast message={message} onClose={() => setMessage(null)} />
+
+      <div className="grid-2">
+        <section className="card">
+          <h2>Novo cliente</h2>
+          <form className="form" onSubmit={handleSubmit} noValidate>
+            <Field
+              label="Nome"
+              name="nome"
+              required
+              value={form.nome}
+              onChange={handleChange}
+              error={errors.nome}
+              placeholder="Maria Silva"
+            />
+            <Field
+              label="CPF"
+              name="cpf"
+              required
+              value={form.cpf}
+              inputMode="numeric"
+              onChange={handleChange}
+              error={errors.cpf}
+              placeholder="000.000.000-00"
+            />
+            <div className="form-row">
+              <Field
+                label="E-mail"
+                name="email"
+                type="email"
+                required
+                value={form.email}
+                onChange={handleChange}
+                error={errors.email}
+                placeholder="maria@email.com"
+              />
+              <Field
+                label="Telefone"
+                name="telefone"
+                type="tel"
+                required
+                value={form.telefone}
+                onChange={handleChange}
+                error={errors.telefone}
+                placeholder="(51) 99999-9999"
+              />
+            </div>
+            <Field
+              label="Endereço"
+              name="endereco"
+              as="textarea"
+              rows={2}
+              value={form.endereco}
+              onChange={handleChange}
+              placeholder="Rua, número, bairro, cidade"
+            />
+
+            <div className="actions">
+              <button type="submit" className="btn btn-primary" disabled={saving}>
+                {saving ? 'Salvando...' : 'Cadastrar'}
+              </button>
+              <button
+                type="button"
+                className="btn btn-ghost"
+                onClick={() => {
+                  setForm(emptyForm)
+                  setErrors({})
+                }}
+              >
+                Limpar
+              </button>
+            </div>
+          </form>
+        </section>
+
+        <section className="card">
+          <div className="card-header">
+            <h2>Carteira de clientes</h2>
+            <span className="pill">{clientes.items.length}</span>
+          </div>
+
+          <input
+            className="search"
+            type="search"
+            placeholder="Buscar por nome ou CPF"
+            value={search}
+            onChange={(e) => setSearch(e.target.value)}
+          />
+
+          {clientes.loading && <p className="empty">Carregando...</p>}
+          {clientes.error && <p className="empty">{clientes.error}</p>}
+          {!clientes.loading && !clientes.error && filtrados.length === 0 && (
+            <p className="empty">Nenhum cliente encontrado.</p>
+          )}
+
+          <ul className="list">
+            {filtrados.map((cliente) => {
+              const qtdContratos = contratosPorCliente[cliente.id] ?? 0
+              return (
+                <li key={cliente.id} className="list-item">
+                  <div>
+                    <strong>{cliente.nome}</strong>
+                    <span className="muted">CPF {cliente.cpf}</span>
+                    <span className="muted">
+                      {cliente.email} · {cliente.telefone}
+                    </span>
+                    <span className="muted small">
+                      Desde {formatDateTime(cliente.criadoEm)} · {qtdContratos}{' '}
+                      contrato(s)
+                    </span>
+                  </div>
+                  <button
+                    type="button"
+                    className="btn btn-danger btn-sm"
+                    disabled={qtdContratos > 0}
+                    title={qtdContratos > 0 ? 'Cliente possui contratos' : undefined}
+                    onClick={() => handleRemove(cliente)}
+                  >
+                    Remover
+                  </button>
+                </li>
+              )
+            })}
+          </ul>
+        </section>
+      </div>
+    </>
+  )
+}

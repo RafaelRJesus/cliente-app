@@ -14,11 +14,11 @@ App que montei para praticar e testar cenários de crédito pessoal fora do ambi
   - garantia de imóvel libera até 60% do valor do imóvel, em até 240 meses.
 - **Contratos** – a simulação vira contrato; cada parcela pode ser paga numa data escolhida, com multa de 2% e juros de mora de 1% a.m. pro rata.
 - **Visão geral** – saldo da carteira, parcelas vencidas e próximos vencimentos.
-- **Acesso por papel** – login por e-mail e senha, com confirmação do e-mail:
+- **Acesso por papel** – login por e-mail e senha (com confirmação do e-mail) ou com Google:
 
   | Papel | Quem é | O que faz |
   | --- | --- | --- |
-  | Admin | o dono do app (criado à mão no console) | tudo, e é o único que cadastra gestores |
+  | Admin | o dono do app (criado à mão no console), só entra com Google | tudo, e é o único que cadastra gestores |
   | Gestor | e-mail liberado pelo admin | vê toda a carteira, cadastra clientes, contrata, registra pagamento |
   | Cliente | cria a própria conta | vê só o próprio cadastro e contratos, simula e paga parcelas |
 
@@ -57,8 +57,8 @@ Sem `.env.local` o app salva tudo no `localStorage`, o que já basta pra testar.
 
 Para usar o Firestore, copie `.env.example` para `.env.local` e preencha com a config do seu projeto Firebase. No console:
 
-1. Authentication → Sign-in method: ative **E-mail/senha**.
-2. Crie sua conta pelo app, confirme o e-mail e anote o UID (Authentication → Users).
+1. Authentication → Sign-in method: ative **E-mail/senha** e **Google**.
+2. Entre no app com **Entrar com Google** (o admin só é aceito assim) e anote o UID (Authentication → Users).
 3. Firestore → coleção `usuarios`, documento com id = seu UID, campos `papel: "admin"`, `email` (o seu, em minúsculas), `nome` e `criadoEm` (texto).
 
 ```bash

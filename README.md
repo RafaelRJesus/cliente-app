@@ -14,6 +14,7 @@ App que montei para praticar e testar cenários de crédito pessoal fora do ambi
   - garantia de imóvel libera até 60% do valor do imóvel, em até 240 meses.
 - **Contratos** – a simulação vira contrato; cada parcela pode ser paga numa data escolhida, com multa de 2% e juros de mora de 1% a.m. pro rata.
 - **Visão geral** – saldo da carteira, parcelas vencidas e próximos vencimentos.
+- **Backoffice do admin** – tela **Usuários** (todos os perfis, papel, CPF vinculado, bloquear/desbloquear), carteira de **contratos por contrato ou por cliente** e **ficha do cliente** com cadastro, acesso ao app e todos os contratos.
 - **Acesso por papel** – login por e-mail e senha (com confirmação do e-mail) ou com Google:
 
   | Papel | Quem é | O que faz |

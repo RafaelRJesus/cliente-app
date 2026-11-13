@@ -19,6 +19,24 @@ jobs:
       - run: npm test
       - run: npm run build
 
+  regras:
+    # Regras do Firestore no emulador: cada papel tentando o que pode e o que não pode.
+    name: regras do Firestore
+    runs-on: ubuntu-latest
+    needs: check
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: 21
+      - run: npm ci
+      - run: npm run test:regras
+
   e2e:
     runs-on: ubuntu-latest
     needs: check

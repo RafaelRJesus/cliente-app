@@ -11,7 +11,8 @@
     "test": "vitest run",
     "test:watch": "vitest",
     "format": "prettier --write src",
-    "test:e2e": "playwright test"
+    "test:e2e": "playwright test",
+    "test:regras": "npx -y firebase-tools@latest emulators:exec --only firestore --project demo-rjbank \"vitest run -c vitest.regras.config.js\""
   },
   "dependencies": {
     "firebase": "^13.3.0",
@@ -21,6 +22,7 @@
   },
   "devDependencies": {
     "@eslint/js": "^10.0.1",
+    "@firebase/rules-unit-testing": "^6.0.0",
     "@playwright/test": "^1.65.0",
     "@types/react": "^19.2.14",
     "@types/react-dom": "^19.2.3",

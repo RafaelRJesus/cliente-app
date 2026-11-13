@@ -6,12 +6,28 @@ App que montei para praticar e testar cenários de crédito pessoal fora do ambi
 
 ## O que dá pra fazer
 
-- **Clientes** – cadastro com validação de CPF (dígitos verificadores), máscara de CPF/telefone, busca e bloqueio de CPF duplicado.
-- **Simulador** – Price ou SAC, IOF de pessoa física (0,0082% a.d. + 0,38%), CET mensal/anual e cronograma completo.
+- **Clientes** – cadastro com validação de CPF (dígitos verificadores), máscaras, busca, bloqueio de CPF duplicado e endereço preenchido pelo CEP.
+- **Simulador** – cinco produtos (crédito pessoal, consignado, garantia de veículo, garantia de imóvel e Pix parcelado), Price ou SAC, IOF de pessoa física (0,0082% a.d. + 0,38%), CET mensal/anual e cronograma completo.
+  - taxa sugerida = mediana do mercado publicada pelo Banco Central para a modalidade;
+  - consignado respeita margem de 35% da renda;
+  - garantia de veículo valida a placa (antiga ou Mercosul), busca o valor na tabela FIPE e libera até 70% dele (veículos de até 15 anos);
+  - garantia de imóvel libera até 60% do valor do imóvel, em até 240 meses.
 - **Contratos** – a simulação vira contrato; cada parcela pode ser paga numa data escolhida, com multa de 2% e juros de mora de 1% a.m. pro rata.
 - **Visão geral** – saldo da carteira, parcelas vencidas e próximos vencimentos.
 
 As fórmulas são as de mercado. Não reproduzem regra de nenhuma instituição.
+
+## APIs públicas usadas
+
+| Para quê | API |
+| --- | --- |
+| Endereço pelo CEP | [BrasilAPI](https://brasilapi.com.br), com [ViaCEP](https://viacep.com.br) de reserva |
+| Valor FIPE do veículo | [FIPE API (parallelum)](https://deividfortuna.github.io/fipe/) |
+| Taxas médias de mercado | [Banco Central – Olinda](https://olinda.bcb.gov.br/olinda/servico/taxaJuros/versao/v2/aplicacao) |
+
+Todas são gratuitas e sem chave, chamadas direto do navegador. Respostas da FIPE e do BC ficam em cache no `localStorage`.
+
+Não existe API pública gratuita que consulte os dados de um veículo pela placa (esses dados são do Detran/Senatran), então a placa é validada só pelo formato.
 
 ## Stack
 
@@ -39,7 +55,8 @@ npx firebase-tools deploy   # hosting + regras do Firestore
 
 ```text
 src/
-  lib/         regras de crédito, validações, formatação, acesso a dados
+  lib/         regras de crédito e dos produtos, validações, formatação, acesso a dados
+  lib/api/     clientes HTTP de CEP, FIPE e Banco Central
   hooks/       useCollection (CRUD em memória + store)
   context/     dados compartilhados entre as telas
   components/  peças reutilizáveis (Field, tabela de parcelas, toast…)
@@ -49,6 +66,7 @@ src/
 ## Próximos passos
 
 - [ ] Renegociação de contrato em atraso
+- [ ] Comparar a taxa com a de um banco específico (a API do BC traz por instituição)
 - [ ] Antecipação de parcelas com desconto de juros
 - [ ] Exportar cronograma em CSV
 - [ ] Testes de interface (Playwright)

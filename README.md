@@ -39,8 +39,15 @@ contrato, e as APIs externas abaixo.
 - **Navegando:** https://cliente-app-1a979.web.app/api-docs/ (ou `/api-docs/` no `npm run dev`)
 - **Validando:** `npm run docs:api` (Redocly; roda também no CI)
 
-O Swagger UI vem do pacote `swagger-ui-dist` e é copiado para `public/api-docs/vendor/` antes do
-`dev` e do `build`, sem depender de CDN.
+A página pede **login com Google** antes de mostrar a documentação. Depois do login, o "Try it
+out" usa o token dessa sessão nas rotas do Firestore e a chave do app nas de autenticação, então
+dá para testar sem colar nada. O acesso aos dados segue o perfil da conta no app. Sem Firebase
+configurado (modo local e testes de tela), a página abre sem login e avisa.
+
+A página é uma segunda entrada do Vite (`api-docs/index.html` + `src/apiDocs/`), com o Swagger UI
+do pacote `swagger-ui-dist` empacotado junto, sem CDN. O login é só na tela: o arquivo
+`openapi.yaml` continua público, o que não expõe nada, porque quem protege os dados são as regras
+do Firestore.
 
 ## APIs públicas usadas
 

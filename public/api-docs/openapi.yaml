@@ -40,6 +40,14 @@ info:
       do contrato daquele cliente. Os dois só são aceitos numa transação
       ([`documents:commit`](#/Transações/commit)) que avança o contador na mesma gravação.
 
+    ## Testando por esta página
+
+    A página `/api-docs/` só abre com login pelo Google. Depois do login, o "Try it out" põe
+    sozinho o token da sua sessão nas rotas do Firestore e a chave do app nas rotas de
+    autenticação: não precisa usar o botão Authorize. O que você consegue ler ou gravar segue o
+    seu perfil no app (o admin, que entra pelo Google, tem acesso completo). As chamadas vão para
+    a produção.
+
     > Projeto de estudo: use apenas dados fictícios.
   contact:
     name: Repositório no GitHub

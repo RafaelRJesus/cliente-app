@@ -1,0 +1,139 @@
+body {
+  margin: 0;
+  background: #f6f7fa;
+  color: #111827;
+  font:
+    16px/1.55 'Instrument Sans Variable',
+    system-ui,
+    sans-serif;
+}
+
+.topo {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.5rem 1.25rem;
+  max-width: 1460px;
+  margin: 0 auto;
+  padding: 1rem 20px;
+  font-weight: 600;
+}
+
+.topo a {
+  color: #2d33b8;
+  font-weight: 500;
+}
+
+.sessao {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  margin-left: auto;
+  font-weight: 400;
+  color: #5b6473;
+}
+
+.sessao button {
+  padding: 0.35rem 0.8rem;
+  border: 1px solid #e2e5eb;
+  border-radius: 6px;
+  background: #fff;
+  color: #111827;
+  font: inherit;
+  cursor: pointer;
+}
+
+.portao {
+  max-width: 34rem;
+  margin: 3rem auto;
+  padding: 2rem;
+  border: 1px solid #e2e5eb;
+  border-radius: 10px;
+  background: #fff;
+}
+
+.portao h1 {
+  margin: 0 0 0.75rem;
+  font-size: 1.75rem;
+  font-weight: 650;
+  font-stretch: 85%;
+  letter-spacing: -0.02em;
+}
+
+.portao p {
+  margin: 0 0 0.9rem;
+  color: #374151;
+}
+
+.portao .aviso {
+  color: #5b6473;
+  font-size: 0.9rem;
+}
+
+.portao:has(> .aviso:only-child) {
+  max-width: 1420px;
+  margin: 0 auto 1rem;
+  padding: 0.75rem 1rem;
+}
+
+.portao:has(> .aviso:only-child) .aviso {
+  margin: 0;
+}
+
+.botao-google {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.6rem;
+  width: 100%;
+  min-height: 44px;
+  margin-top: 0.5rem;
+  border: 1px solid #e2e5eb;
+  border-radius: 8px;
+  background: #fff;
+  color: #111827;
+  font: inherit;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.botao-google:hover:not(:disabled) {
+  background: #f6f7fa;
+}
+
+.botao-google:disabled {
+  opacity: 0.6;
+  cursor: progress;
+}
+
+.botao-google:focus-visible,
+.sessao button:focus-visible,
+.topo a:focus-visible {
+  outline: 2px solid #3a3fd8;
+  outline-offset: 2px;
+}
+
+.erro {
+  margin: 0.75rem 0 0;
+  color: #b42318;
+  font-size: 0.9rem;
+}
+
+.erro:empty {
+  display: none;
+}
+
+.swagger-ui .topbar {
+  display: none;
+}
+
+.swagger-ui .btn.execute {
+  border-color: #3a3fd8;
+  background: #3a3fd8;
+  color: #fff;
+}
+
+.swagger-ui .btn.authorize {
+  border-color: #3a3fd8;
+  color: #3a3fd8;
+}

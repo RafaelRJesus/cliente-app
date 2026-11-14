@@ -1,20 +1,24 @@
 :root {
-  --navy: #0b1d3a;
-  --navy-2: #12294f;
-  --green: #00a868;
-  --green-dark: #008a55;
-  --green-soft: #e6f7ef;
-  --red: #d93d3d;
-  --red-soft: #fdeeee;
+  /* Paleta: fundo claro, tinta escura e uma marca só (jade), com contraste AA */
+  --navy: #111827; /* bloco escuro: barra lateral e destaques */
+  --navy-2: #1f2937;
+  --green: #0b7a5b; /* marca: botões e ações principais */
+  --green-dark: #086048;
+  --green-soft: #e3f3ec;
+  --menta: #8be3c0; /* números sobre o bloco escuro */
+  --red: #b42318;
+  --red-soft: #fdecea;
   --amber-soft: #fff6e0;
-  --text: #4a5568;
-  --title: #0b1d3a;
-  --muted: #8a94a6;
-  --bg: #f3f5f9;
+  --text: #374151;
+  --title: #111827;
+  --muted: #5b6473;
+  --bg: #f6f7fa;
   --surface: #fff;
-  --border: #e3e8ef;
+  --border: #e2e5eb;
   --radius: 14px;
-  --font: 'Inter', system-ui, -apple-system, 'Segoe UI', sans-serif;
+  --font:
+    'Instrument Sans Variable', 'Instrument Sans', system-ui, -apple-system, 'Segoe UI',
+    sans-serif;
 }
 
 * {
@@ -23,7 +27,8 @@
 
 body {
   margin: 0;
-  font: 15px/1.5 var(--font);
+  font: 16px/1.55 var(--font);
+  font-feature-settings: 'tnum' 1; /* números alinhados em tabelas e valores */
   color: var(--text);
   background: var(--bg);
   -webkit-font-smoothing: antialiased;
@@ -57,7 +62,7 @@ h2 {
 
 .sidebar {
   background: var(--navy);
-  color: #c7d2e5;
+  color: #d1d5db;
   padding: 1.5rem 1rem;
   display: flex;
   flex-direction: column;
@@ -82,7 +87,7 @@ h2 {
 
 .brand small {
   font-size: 0.75rem;
-  color: #8fa0bf;
+  color: #9ca3af;
 }
 
 .brand-logo {
@@ -91,9 +96,9 @@ h2 {
   width: 38px;
   height: 38px;
   border-radius: 10px;
-  background: var(--green);
-  color: #fff;
-  font-weight: 800;
+  background: var(--menta);
+  color: var(--navy);
+  font-weight: 700;
 }
 
 .nav {
@@ -125,7 +130,7 @@ h2 {
   margin: auto 0 0;
   padding: 0 0.5rem;
   font-size: 0.75rem;
-  color: #8fa0bf;
+  color: #9ca3af;
 }
 
 .content {
@@ -164,8 +169,11 @@ h2 {
 }
 
 .page-header h1 {
-  font-size: 1.6rem;
-  letter-spacing: -0.02em;
+  font-size: 2rem;
+  font-weight: 620;
+  font-stretch: 92%;
+  letter-spacing: -0.025em;
+  line-height: 1.1;
 }
 
 .page-header p {
@@ -372,14 +380,26 @@ h2 {
   border: none;
 }
 
+/* dentro de um card o espaço é menor: valor um pouco menor para não vazar */
+.card .kpi strong {
+  font-size: 1.3rem;
+  overflow-wrap: anywhere;
+}
+
 .kpi span {
   display: block;
-  font-size: 0.78rem;
+  font-size: 0.85rem;
   color: var(--muted);
 }
 
 .kpi strong {
-  font-size: 1.2rem;
+  display: block;
+  margin-top: 0.2rem;
+  font-size: 1.65rem;
+  font-weight: 640;
+  font-stretch: 88%;
+  letter-spacing: -0.025em;
+  line-height: 1.1;
   color: var(--title);
   font-variant-numeric: tabular-nums;
 }
@@ -516,9 +536,8 @@ h2 {
 
 .table th {
   text-align: left;
-  font-size: 0.75rem;
-  text-transform: uppercase;
-  letter-spacing: 0.03em;
+  font-size: 0.8rem;
+  font-weight: 600;
   color: var(--muted);
   padding: 0.6rem 0.75rem;
   border-bottom: 1px solid var(--border);
@@ -567,7 +586,7 @@ h2 {
 }
 
 .status-neutral {
-  background: #edf0f5;
+  background: var(--border);
   color: var(--text);
 }
 
@@ -861,13 +880,13 @@ h2 {
 }
 
 .usuario small {
-  color: #8fa0bf;
+  color: #9ca3af;
   overflow-wrap: anywhere;
 }
 
 .usuario .link-button {
   margin-top: 0.35rem;
-  color: #7fe0b8;
+  color: var(--menta);
 }
 
 .google {

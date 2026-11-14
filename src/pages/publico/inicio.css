@@ -55,7 +55,7 @@
   height: 34px;
   border-radius: 10px;
   background: var(--title);
-  color: var(--menta);
+  color: var(--xp);
   font-weight: 700;
 }
 
@@ -107,12 +107,12 @@
 }
 
 .lp-botao {
-  background: var(--green);
+  background: var(--marca);
   color: #fff;
 }
 
 .lp-botao:hover {
-  background: var(--green-dark);
+  background: var(--marca-escura);
 }
 
 .lp-botao-grande {
@@ -139,13 +139,13 @@
 }
 
 .lp-botao-claro:hover {
-  background: var(--menta);
+  background: var(--xp);
 }
 
 .lp a:focus-visible,
 .lp button:focus-visible,
 .lp input:focus-visible {
-  outline: 3px solid var(--green);
+  outline: 3px solid var(--marca);
   outline-offset: 3px;
 }
 
@@ -337,7 +337,7 @@
 
 .app-pix input[type='range'] {
   width: 100%;
-  accent-color: var(--green);
+  accent-color: var(--marca);
 }
 
 .app-prazos {
@@ -357,9 +357,9 @@
 }
 
 .app-prazos button[aria-checked='true'] {
-  border-color: var(--green);
-  background: var(--green-soft);
-  color: var(--green-dark);
+  border-color: var(--marca);
+  background: var(--marca-suave);
+  color: var(--marca-escura);
 }
 
 .app-parcela {
@@ -389,7 +389,7 @@
   place-items: center;
   min-height: 44px;
   border-radius: 999px;
-  background: var(--green);
+  background: var(--marca);
   color: #fff;
   font-weight: 600;
   text-decoration: none;
@@ -552,7 +552,7 @@
 }
 
 .lp-exemplo-destaque dd {
-  color: var(--menta);
+  color: var(--xp);
   font-size: 52px;
   font-stretch: 86%;
   line-height: 1;
@@ -587,7 +587,7 @@
   content: counter(passo);
   display: block;
   margin-bottom: 0.75rem;
-  color: var(--green);
+  color: var(--marca);
   font-size: 40px;
   font-weight: 650;
   font-stretch: 80%;

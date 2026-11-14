@@ -1,4 +1,6 @@
-# RJ Bank — simulador de crédito
+# Respawn — simulador de crédito
+
+O nome vem dos games: *respawn* é voltar ao jogo depois de perder uma vida. Aqui, é crédito pra recomeçar, com cada parcela à vista.
 
 App que montei para praticar e testar cenários de crédito pessoal fora do ambiente de trabalho: cadastro de clientes, simulação Price/SAC, geração de contrato e pagamento de parcelas com encargos de atraso.
 

@@ -2,6 +2,7 @@ import { NavLink, Outlet, useNavigate } from 'react-router-dom'
 import { useAuth } from '../context/AuthContext'
 import { PAPEIS } from '../lib/perfis'
 import { storageMode } from '../lib/store'
+import { Logo } from './Logo'
 
 const LINKS = [
   { to: '/', label: 'Visão geral', end: true, para: ['admin', 'gestor'] },
@@ -31,9 +32,9 @@ export function Layout() {
     <div className="shell">
       <aside className="sidebar">
         <div className="brand">
-          <span className="brand-logo">R</span>
+          <Logo />
           <div>
-            <strong>RJ Bank</strong>
+            <strong>Respawn</strong>
             <small>ambiente de simulação</small>
           </div>
         </div>
@@ -48,9 +49,8 @@ export function Layout() {
 
         <div className="usuario">
           <strong>{perfil.nome}</strong>
-          <small>
-            {PAPEIS[perfil.papel]} · {perfil.email}
-          </small>
+          <small>{PAPEIS[perfil.papel]}</small>
+          <small>{perfil.email}</small>
           <button type="button" className="link-button" onClick={sairDoApp}>
             Sair
           </button>

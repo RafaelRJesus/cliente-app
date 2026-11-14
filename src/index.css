@@ -1,11 +1,12 @@
 :root {
-  /* Paleta: fundo claro, tinta escura e uma marca só (jade), com contraste AA */
+  /* Paleta Respawn: fundo claro, tinta escura e uma marca só (cobalto), AA */
   --navy: #111827; /* bloco escuro: barra lateral e destaques */
   --navy-2: #1f2937;
-  --green: #0b7a5b; /* marca: botões e ações principais */
-  --green-dark: #086048;
-  --green-soft: #e3f3ec;
-  --menta: #8be3c0; /* números sobre o bloco escuro */
+  --marca: #3a3fd8; /* cobalto: botões e ações principais (7,3:1 com branco) */
+  --marca-escura: #2d33b8;
+  --marca-suave: #ebecfd;
+  --marca-clara: #a5a9ff; /* links e item ativo sobre o escuro */
+  --xp: #ffc53d; /* âmbar da barra de vida e conquistas, só sobre o escuro */
   --red: #b42318;
   --red-soft: #fdecea;
   --amber-soft: #fff6e0;
@@ -15,7 +16,7 @@
   --bg: #f6f7fa;
   --surface: #fff;
   --border: #e2e5eb;
-  --radius: 14px;
+  --radius: 10px;
   --font:
     'Instrument Sans Variable', 'Instrument Sans', system-ui, -apple-system, 'Segoe UI',
     sans-serif;
@@ -42,7 +43,7 @@ textarea {
 }
 
 a {
-  color: var(--green-dark);
+  color: var(--marca-escura);
 }
 
 h1,
@@ -95,10 +96,9 @@ h2 {
   place-items: center;
   width: 38px;
   height: 38px;
-  border-radius: 10px;
-  background: var(--menta);
-  color: var(--navy);
-  font-weight: 700;
+  border-radius: 8px;
+  background: var(--marca);
+  color: #fff;
 }
 
 .nav {
@@ -123,7 +123,7 @@ h2 {
 .nav a.active {
   background: var(--navy-2);
   color: #fff;
-  box-shadow: inset 3px 0 0 var(--green);
+  box-shadow: inset 3px 0 0 var(--marca-clara);
 }
 
 .sidebar-footer {
@@ -240,8 +240,8 @@ h2 {
 }
 
 .card-highlight {
-  border-color: var(--green);
-  box-shadow: 0 0 0 3px var(--green-soft);
+  border-color: var(--marca);
+  box-shadow: 0 0 0 3px var(--marca-suave);
 }
 
 /* forms */
@@ -287,8 +287,8 @@ h2 {
 .field textarea:focus,
 .search:focus {
   outline: none;
-  border-color: var(--green);
-  box-shadow: 0 0 0 3px var(--green-soft);
+  border-color: var(--marca);
+  box-shadow: 0 0 0 3px var(--marca-suave);
 }
 
 .field .has-error {
@@ -331,12 +331,12 @@ h2 {
 }
 
 .btn-primary {
-  background: var(--green);
+  background: var(--marca);
   color: #fff;
 }
 
 .btn-primary:hover:not(:disabled) {
-  background: var(--green-dark);
+  background: var(--marca-escura);
 }
 
 .btn-ghost {
@@ -434,7 +434,7 @@ h2 {
 }
 
 .resume .total dd {
-  color: var(--green-dark);
+  color: var(--marca-escura);
   font-size: 1.1rem;
 }
 
@@ -517,8 +517,8 @@ h2 {
   min-width: 1.8rem;
   padding: 0.1rem 0.55rem;
   border-radius: 999px;
-  background: var(--green-soft);
-  color: var(--green-dark);
+  background: var(--marca-suave);
+  color: var(--marca-escura);
   font-size: 0.8rem;
   font-weight: 700;
   text-align: center;
@@ -576,8 +576,8 @@ h2 {
 }
 
 .status-ok {
-  background: var(--green-soft);
-  color: var(--green-dark);
+  background: var(--marca-suave);
+  color: var(--marca-escura);
 }
 
 .status-danger {
@@ -611,7 +611,7 @@ h2 {
 
 .tab.active {
   color: var(--title);
-  border-bottom-color: var(--green);
+  border-bottom-color: var(--marca);
 }
 
 .toast {
@@ -664,13 +664,13 @@ h2 {
 }
 
 .produto:hover {
-  border-color: var(--green);
+  border-color: var(--marca);
 }
 
 .produto.active {
-  border-color: var(--green);
-  background: var(--green-soft);
-  box-shadow: inset 0 0 0 1px var(--green);
+  border-color: var(--marca);
+  background: var(--marca-suave);
+  box-shadow: inset 0 0 0 1px var(--marca);
 }
 
 .fieldset {
@@ -700,7 +700,7 @@ h2 {
 .field-hint {
   margin: 0.3rem 0 0;
   font-size: 0.78rem;
-  color: var(--green-dark);
+  color: var(--marca-escura);
 }
 
 .field select:disabled {
@@ -713,7 +713,7 @@ h2 {
   gap: 0.15rem;
   padding: 0.75rem 1rem;
   border-radius: 10px;
-  background: var(--green-soft);
+  background: var(--marca-suave);
   font-size: 0.82rem;
 }
 
@@ -736,7 +736,7 @@ h2 {
   padding: 0;
   border: none;
   background: none;
-  color: var(--green-dark);
+  color: var(--marca-escura);
   font-weight: 600;
   cursor: pointer;
   text-decoration: underline;
@@ -806,7 +806,7 @@ h2 {
 }
 
 :focus-visible {
-  outline: 2px solid var(--green);
+  outline: 2px solid var(--marca);
   outline-offset: 2px;
 }
 
@@ -856,7 +856,7 @@ h2 {
 }
 
 .acesso-links a {
-  color: var(--green-dark);
+  color: var(--marca-escura);
   font-weight: 600;
 }
 
@@ -886,7 +886,7 @@ h2 {
 
 .usuario .link-button {
   margin-top: 0.35rem;
-  color: var(--menta);
+  color: var(--marca-clara);
 }
 
 .google {
@@ -1014,8 +1014,8 @@ h2 {
 
 .arquivo:hover,
 .arquivo:focus-within {
-  border-color: var(--green);
-  background: var(--green-soft);
+  border-color: var(--marca);
+  background: var(--marca-suave);
 }
 
 /* o input cobre a área toda: clicar ou soltar o arquivo funciona igual */
@@ -1075,19 +1075,19 @@ h2 {
 }
 
 .forma input {
-  accent-color: var(--green-dark);
+  accent-color: var(--marca-escura);
   margin: 0;
 }
 
 .forma.ativa {
-  border-color: var(--green);
-  background: var(--green-soft);
+  border-color: var(--marca);
+  background: var(--marca-suave);
   color: var(--title);
   font-weight: 600;
 }
 
 .forma:focus-within {
-  outline: 2px solid var(--green);
+  outline: 2px solid var(--marca);
   outline-offset: 2px;
 }
 
@@ -1143,7 +1143,7 @@ h2 {
 }
 
 .sugestoes li.ativa {
-  background: var(--green-soft);
+  background: var(--marca-suave);
 }
 
 .sugestoes li.vazio {
@@ -1157,9 +1157,9 @@ h2 {
   align-items: center;
   justify-content: space-between;
   padding: 0.6rem 0.8rem;
-  border: 1px solid var(--green);
+  border: 1px solid var(--marca);
   border-radius: 10px;
-  background: var(--green-soft);
+  background: var(--marca-suave);
 }
 
 .cliente-escolhido div {

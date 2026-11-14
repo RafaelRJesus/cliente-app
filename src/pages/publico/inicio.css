@@ -53,9 +53,9 @@
   place-items: center;
   width: 34px;
   height: 34px;
-  border-radius: 10px;
-  background: var(--title);
-  color: var(--xp);
+  border-radius: 8px;
+  background: var(--marca);
+  color: #fff;
   font-weight: 700;
 }
 
@@ -100,7 +100,7 @@
   justify-content: center;
   min-height: 44px;
   padding: 0.65rem 1.25rem;
-  border-radius: 999px;
+  border-radius: 6px;
   font-weight: 600;
   text-decoration: none;
   white-space: nowrap;
@@ -163,10 +163,10 @@
   max-width: 22ch;
   margin: 0;
   font-size: 64px;
-  font-weight: 640;
-  font-stretch: 86%;
-  line-height: 1.02;
-  letter-spacing: -0.035em;
+  font-weight: 650;
+  font-stretch: 80%;
+  line-height: 1;
+  letter-spacing: -0.03em;
   text-wrap: balance;
 }
 
@@ -225,7 +225,7 @@
 @keyframes celular-entra {
   from {
     opacity: 0;
-    transform: translateY(24px) rotate(2deg);
+    transform: translateY(24px);
   }
 }
 
@@ -289,7 +289,7 @@
 
 .app-atalhos span {
   padding: 8px 0;
-  border-radius: 12px;
+  border-radius: 6px;
   background: #fff;
   text-align: center;
   font-size: 12px;
@@ -306,7 +306,7 @@
   display: grid;
   gap: 8px;
   padding: 16px;
-  border-radius: 22px;
+  border-radius: 14px;
   background: #fff;
 }
 
@@ -349,7 +349,7 @@
 .app-prazos button {
   min-height: 34px;
   border: 1px solid var(--border);
-  border-radius: 10px;
+  border-radius: 6px;
   background: var(--bg);
   color: var(--title);
   font-weight: 600;
@@ -367,7 +367,7 @@
   gap: 2px;
   margin: 4px 0 0;
   padding: 10px 12px;
-  border-radius: 14px;
+  border-radius: 8px;
   background: var(--bg);
 }
 
@@ -388,7 +388,7 @@
   display: grid;
   place-items: center;
   min-height: 44px;
-  border-radius: 999px;
+  border-radius: 6px;
   background: var(--marca);
   color: #fff;
   font-weight: 600;
@@ -415,6 +415,7 @@
   font-stretch: 88%;
   line-height: 1.08;
   letter-spacing: -0.03em;
+  text-wrap: balance;
 }
 
 /* produtos: uma tabela de verdade, porque é comparação */
@@ -578,20 +579,41 @@
 }
 
 .lp-passos li {
-  padding-top: 1.25rem;
-  border-top: 2px solid var(--title);
   counter-increment: passo;
 }
 
+/* cada passo é um checkpoint: bloco numerado e trilha em blocos até o próximo */
 .lp-passos li::before {
   content: counter(passo);
-  display: block;
-  margin-bottom: 0.75rem;
-  color: var(--marca);
-  font-size: 40px;
+  display: grid;
+  place-items: center;
+  width: 44px;
+  height: 44px;
+  margin-bottom: 1rem;
+  background: var(--marca);
+  color: #fff;
+  font-size: 20px;
   font-weight: 650;
-  font-stretch: 80%;
-  line-height: 1;
+}
+
+@media (min-width: 701px) {
+  .lp-passos li {
+    position: relative;
+  }
+
+  .lp-passos li:not(:last-child)::after {
+    content: '';
+    position: absolute;
+    top: 19px;
+    left: 56px;
+    right: -1.4rem;
+    height: 6px;
+    background: repeating-linear-gradient(
+      90deg,
+      var(--border) 0 14px,
+      transparent 14px 18px
+    );
+  }
 }
 
 .lp-passos h3 {
@@ -633,4 +655,102 @@
 .lp-rodape a {
   color: var(--title);
   font-weight: 600;
+}
+
+/* barra de vida: a peça de destaque da página */
+
+.lp-vida-secao {
+  display: grid;
+  grid-template-columns: minmax(0, 5fr) minmax(0, 7fr);
+  gap: 3rem;
+  align-items: start;
+  border-top: 1px solid var(--border);
+}
+
+@media (max-width: 900px) {
+  .lp-vida-secao {
+    grid-template-columns: 1fr;
+    gap: 2rem;
+  }
+}
+
+.lp-demo {
+  display: grid;
+  gap: 1rem;
+}
+
+.lp-demo-placar {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 1rem;
+}
+
+.lp-demo-placar p {
+  margin: 0;
+  color: var(--text);
+  font-size: 18px;
+}
+
+.lp-demo-placar strong {
+  margin-right: 0.3rem;
+  color: var(--title);
+  font-size: 56px;
+  font-weight: 650;
+  font-stretch: 80%;
+  line-height: 1;
+}
+
+.lp .lp-vida {
+  height: 40px;
+  gap: 4px;
+}
+
+.lp-demo-aviso {
+  min-height: 1.5em;
+  margin: 0;
+  color: var(--marca-escura);
+  font-weight: 600;
+}
+
+.lp-conquistas {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 0.75rem;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.lp-conquistas li {
+  display: grid;
+  gap: 0.2rem;
+  padding: 0.85rem 1rem;
+  border: 1px dashed #b7bcc7;
+  border-radius: 6px;
+  color: var(--muted);
+  font-size: 14px;
+}
+
+.lp-conquistas strong {
+  color: var(--text);
+  font-size: 15px;
+  font-weight: 600;
+}
+
+.lp-conquistas li.liberada {
+  border: 1px solid var(--marca);
+  background: var(--marca-suave);
+  color: var(--text);
+}
+
+.lp-conquistas li.liberada strong {
+  color: var(--marca-escura);
+}
+
+@media (max-width: 600px) {
+  .lp-conquistas {
+    grid-template-columns: 1fr;
+  }
 }

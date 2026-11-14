@@ -2,7 +2,9 @@ import { Link } from 'react-router-dom'
 import { simular } from '../../lib/credito'
 import { formatMoney, today } from '../../lib/format'
 import { PRODUTOS } from '../../lib/produtos'
+import { Logo } from '../../components/Logo'
 import { Celular } from './Celular'
+import { DemoVida } from './DemoVida'
 import './inicio.css'
 
 const reais = (n) => formatMoney(n).replace(',00', '')
@@ -39,9 +41,9 @@ export function Inicio() {
   return (
     <div className="lp">
       <header className="lp-topo lp-largura">
-        <Link to="/" className="lp-marca" aria-label="RJ Bank, início">
-          <span className="lp-logo">R</span>
-          RJ Bank
+        <Link to="/" className="lp-marca" aria-label="Respawn, início">
+          <Logo className="lp-logo" />
+          Respawn
         </Link>
         <nav className="lp-nav" aria-label="Seções">
           <a href="#produtos">Produtos</a>
@@ -60,11 +62,11 @@ export function Inicio() {
       <main>
         <section className="lp-heroi lp-largura">
           <div className="lp-heroi-texto">
-            <h1>Crédito que você entende antes de contratar.</h1>
+            <h1>Crédito pra recomeçar, com o mapa aberto.</h1>
             <p className="lp-apoio">
-              Simule empréstimo pessoal, consignado, com garantia e Pix parcelado usando
-              as taxas médias do Banco Central. Você vê cada parcela, o IOF e o custo
-              total antes de assinar.
+              Simule empréstimo pessoal, consignado, com garantia e Pix parcelado com as
+              taxas médias do Banco Central. Antes de assinar, você vê cada parcela, o IOF
+              e o custo total. Nada escondido na névoa.
             </p>
             <div className="lp-ctas">
               <Link to="/criar-conta" className="lp-botao lp-botao-grande">
@@ -75,10 +77,24 @@ export function Inicio() {
               </Link>
             </div>
             <p className="lp-aviso">
-              Ambiente de simulação: nenhum valor é cobrado de verdade.
+              Ambiente de simulação: nenhuma moeda de verdade entra nesse jogo.
             </p>
           </div>
           <Celular />
+        </section>
+
+        <section
+          className="lp-secao lp-largura lp-vida-secao"
+          aria-labelledby="titulo-vida"
+        >
+          <div className="lp-vida-texto">
+            <h2 id="titulo-vida">Cada parcela paga enche a barra.</h2>
+            <p className="lp-apoio">
+              No app, todo contrato tem uma barra de progresso e três conquistas pelo
+              caminho. Você sabe quanto falta sem abrir planilha.
+            </p>
+          </div>
+          <DemoVida />
         </section>
 
         <section id="produtos" className="lp-secao lp-largura">
@@ -166,7 +182,7 @@ export function Inicio() {
 
       <footer className="lp-rodape lp-largura">
         <p>
-          RJ Bank é um projeto de estudo: não é uma instituição financeira e não oferece
+          Respawn é um projeto de estudo: não é uma instituição financeira e não oferece
           crédito real. Use apenas dados fictícios.
         </p>
         <Link to="/entrar">Entrar</Link>

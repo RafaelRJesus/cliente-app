@@ -31,7 +31,9 @@ export function ProgressoContrato({ pagas, total, nova, onFecharNova }) {
       <div role="status" className="conquista-nova-area">
         {nova && (
           <p className="conquista-nova">
-            Conquista desbloqueada: <strong>{nova.nome}</strong>
+            <span>
+              Conquista desbloqueada: <strong>{nova.nome}</strong>
+            </span>
             <button type="button" className="link-button" onClick={onFecharNova}>
               Fechar
             </button>

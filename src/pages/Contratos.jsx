@@ -40,9 +40,23 @@ function ListaContratos() {
   const { contratos, clientes } = useData()
   const { equipe } = useAuth()
   const [params, setParams] = useSearchParams()
-  const [filtro, setFiltro] = useState('todos')
   const hoje = today()
-  // a visão fica na URL para dar para voltar e compartilhar
+  // filtro e visão ficam na URL: dá para voltar, compartilhar e chegar
+  // aqui já filtrado a partir da Visão geral (?situacao=em%20atraso)
+  const filtro = SITUACOES.includes(params.get('situacao'))
+    ? params.get('situacao')
+    : 'todos'
+  const mudarParam = (chave, valor) =>
+    setParams(
+      (atual) => {
+        const proximo = new URLSearchParams(atual)
+        if (valor) proximo.set(chave, valor)
+        else proximo.delete(chave)
+        return proximo
+      },
+      { replace: true },
+    )
+  const setFiltro = (opcao) => mudarParam('situacao', opcao === 'todos' ? null : opcao)
   const porCliente = equipe && params.get('visao') === 'cliente'
 
   const linhas = useMemo(
@@ -128,14 +142,14 @@ function ListaContratos() {
               <button
                 type="button"
                 aria-pressed={!porCliente}
-                onClick={() => setParams({}, { replace: true })}
+                onClick={() => mudarParam('visao', null)}
               >
                 Por contrato
               </button>
               <button
                 type="button"
                 aria-pressed={porCliente}
-                onClick={() => setParams({ visao: 'cliente' }, { replace: true })}
+                onClick={() => mudarParam('visao', 'cliente')}
               >
                 Por cliente
               </button>

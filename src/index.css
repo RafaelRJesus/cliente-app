@@ -1173,3 +1173,124 @@ h2 {
   font-weight: 600;
   color: var(--title);
 }
+
+/* barra de vida: blocos retos, um por parcela */
+
+.vida {
+  display: grid;
+  grid-template-columns: repeat(var(--blocos), minmax(0, 1fr));
+  gap: 3px;
+  height: 14px;
+}
+
+.vida span {
+  background: var(--border);
+}
+
+.vida span.cheio {
+  background: var(--marca);
+}
+
+@media (prefers-reduced-motion: no-preference) {
+  .vida span {
+    transition: background-color 0.25s ease;
+  }
+}
+
+/* painel escuro do contrato */
+
+.progresso-contrato {
+  display: grid;
+  gap: 1rem;
+  margin-bottom: 1.5rem;
+  padding: 1.5rem;
+  border-radius: var(--radius);
+  background: var(--navy);
+  color: #d1d5db;
+}
+
+.progresso-cabeca {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 0.5rem 1.5rem;
+}
+
+.progresso-contrato h2 {
+  color: #fff;
+  font-size: 1.05rem;
+}
+
+.progresso-cabeca p {
+  margin: 0;
+}
+
+.progresso-cabeca strong {
+  margin-right: 0.35rem;
+  color: var(--xp);
+  font-size: 1.5rem;
+  font-weight: 650;
+}
+
+.progresso-contrato .vida span {
+  background: #374151;
+}
+
+.progresso-contrato .vida span.cheio {
+  background: var(--xp);
+}
+
+.conquistas {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(190px, 1fr));
+  gap: 0.75rem;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.conquista {
+  display: grid;
+  gap: 0.15rem;
+  padding: 0.7rem 0.85rem;
+  border: 1px dashed #4b5563;
+  border-radius: 6px;
+  font-size: 0.85rem;
+  color: #9ca3af;
+}
+
+.conquista strong {
+  color: #d1d5db;
+  font-weight: 600;
+}
+
+.conquista.liberada {
+  border: 1px solid var(--xp);
+  color: #e5e7eb;
+}
+
+.conquista.liberada strong {
+  color: var(--xp);
+}
+
+.conquista-nova-area:empty {
+  display: none;
+}
+
+.conquista-nova {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.5rem 1rem;
+  margin: 0;
+  padding: 0.6rem 0.85rem;
+  border-radius: 6px;
+  background: var(--xp);
+  color: var(--navy);
+}
+
+.conquista-nova .link-button {
+  margin-left: auto;
+  color: var(--navy);
+}

@@ -1,3 +1,5 @@
+import { ProgressoContrato } from '../components/ProgressoContrato'
+import { conquistaNova } from '../lib/conquistas'
 import { useMemo, useState } from 'react'
 import { Link, useNavigate, useParams, useSearchParams } from 'react-router-dom'
 import { ConfirmacaoInline } from '../components/ConfirmacaoInline'
@@ -173,6 +175,7 @@ function DetalheContrato({ contrato }) {
   const [formaPagamento, setFormaPagamento] = useState('pix')
   const [pagando, setPagando] = useState(false)
   const [message, setMessage] = useState(null)
+  const [conquista, setConquista] = useState(null)
 
   const hoje = today()
   const pagas = contrato.parcelas.filter((p) => p.pagaEm).length
@@ -193,6 +196,7 @@ function DetalheContrato({ contrato }) {
           : p,
       )
       await contratos.update(contrato.id, { parcelas })
+      setConquista(conquistaNova(pagas, pagas + 1, contrato.prazo))
       setMessage({
         text: `Parcela ${parcelaSelecionada.numero} paga (${nomeFormaPagamento(formaPagamento)}).`,
       })
@@ -257,6 +261,13 @@ function DetalheContrato({ contrato }) {
       )}
 
       <Toast message={message} onClose={() => setMessage(null)} />
+
+      <ProgressoContrato
+        pagas={pagas}
+        total={contrato.prazo}
+        nova={conquista}
+        onFecharNova={() => setConquista(null)}
+      />
 
       <div className="kpis kpis-4">
         <div className="kpi">

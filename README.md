@@ -29,6 +29,19 @@ App que montei para praticar e testar cenários de crédito pessoal fora do ambi
 
 As fórmulas são as de mercado. Não reproduzem regra de nenhuma instituição.
 
+## Documentação das APIs (Swagger)
+
+Todas as chamadas HTTP do app estão descritas em OpenAPI 3.1 em
+[`public/api-docs/openapi.yaml`](public/api-docs/openapi.yaml): login no Firebase Authentication,
+cada coleção do Firestore com o que cada perfil pode fazer, as transações que numeram cliente e
+contrato, e as APIs externas abaixo.
+
+- **Navegando:** https://cliente-app-1a979.web.app/api-docs/ (ou `/api-docs/` no `npm run dev`)
+- **Validando:** `npm run docs:api` (Redocly; roda também no CI)
+
+O Swagger UI vem do pacote `swagger-ui-dist` e é copiado para `public/api-docs/vendor/` antes do
+`dev` e do `build`, sem depender de CDN.
+
 ## APIs públicas usadas
 
 | Para quê | API |

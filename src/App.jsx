@@ -12,6 +12,7 @@ import { Clientes } from './pages/Clientes'
 import { Contratos } from './pages/Contratos'
 import { Dashboard } from './pages/Dashboard'
 import { Gestores } from './pages/Gestores'
+import { Inicio } from './pages/publico/Inicio'
 import { ImportarClientes } from './pages/ImportarClientes'
 import { Simulador } from './pages/Simulador'
 import { Usuarios } from './pages/Usuarios'
@@ -24,6 +25,7 @@ export default function App() {
   if (!user) {
     return (
       <Routes>
+        <Route index element={<Inicio />} />
         <Route path="entrar" element={<Entrar />} />
         <Route path="criar-conta" element={<CriarConta />} />
         <Route path="esqueci-senha" element={<EsqueciSenha />} />

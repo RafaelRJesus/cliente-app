@@ -1,4 +1,4 @@
-import { NavLink, Outlet } from 'react-router-dom'
+import { NavLink, Outlet, useNavigate } from 'react-router-dom'
 import { useAuth } from '../context/AuthContext'
 import { PAPEIS } from '../lib/perfis'
 import { storageMode } from '../lib/store'
@@ -19,6 +19,12 @@ const LINKS = [
 
 export function Layout() {
   const { perfil, sair } = useAuth()
+  const navigate = useNavigate()
+  // sem isso, quem sai na Visão geral (/) cairia na página de entrada
+  const sairDoApp = async () => {
+    await sair()
+    navigate('/entrar', { replace: true })
+  }
   const links = LINKS.filter((l) => l.para.includes(perfil.papel))
 
   return (
@@ -45,7 +51,7 @@ export function Layout() {
           <small>
             {PAPEIS[perfil.papel]} · {perfil.email}
           </small>
-          <button type="button" className="link-button" onClick={sair}>
+          <button type="button" className="link-button" onClick={sairDoApp}>
             Sair
           </button>
         </div>

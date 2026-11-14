@@ -1,0 +1,636 @@
+/* Página de entrada. Classes com prefixo lp- para não colidir com o app. */
+
+.lp {
+  --lp-margem: 24px;
+  background: var(--bg);
+  color: var(--title);
+  overflow-x: clip;
+}
+
+.lp-largura {
+  width: 100%;
+  max-width: calc(1200px + 2 * var(--lp-margem));
+  margin-inline: auto;
+  padding-inline: var(--lp-margem);
+}
+
+@media (min-width: 900px) {
+  .lp {
+    --lp-margem: 48px;
+  }
+}
+
+.sr-only {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  clip: rect(0 0 0 0);
+  white-space: nowrap;
+}
+
+/* topo */
+
+.lp-topo {
+  display: flex;
+  align-items: center;
+  gap: 2rem;
+  padding-block: 1.25rem;
+}
+
+.lp-marca {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.6rem;
+  color: var(--title);
+  font-weight: 650;
+  font-size: 1.15rem;
+  text-decoration: none;
+}
+
+.lp-logo {
+  display: grid;
+  place-items: center;
+  width: 34px;
+  height: 34px;
+  border-radius: 10px;
+  background: var(--title);
+  color: var(--menta);
+  font-weight: 700;
+}
+
+.lp-nav {
+  display: flex;
+  gap: 1.5rem;
+}
+
+.lp-nav a,
+.lp-link {
+  color: var(--text);
+  font-weight: 550;
+  text-decoration: none;
+}
+
+.lp-nav a:hover,
+.lp-link:hover {
+  color: var(--title);
+  text-decoration: underline;
+  text-underline-offset: 4px;
+}
+
+.lp-acoes {
+  display: flex;
+  align-items: center;
+  gap: 1.25rem;
+  margin-left: auto;
+}
+
+@media (max-width: 700px) {
+  .lp-nav {
+    display: none;
+  }
+}
+
+/* botões */
+
+.lp-botao,
+.lp-botao-secundario {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 44px;
+  padding: 0.65rem 1.25rem;
+  border-radius: 999px;
+  font-weight: 600;
+  text-decoration: none;
+  white-space: nowrap;
+}
+
+.lp-botao {
+  background: var(--green);
+  color: #fff;
+}
+
+.lp-botao:hover {
+  background: var(--green-dark);
+}
+
+.lp-botao-grande {
+  min-height: 52px;
+  padding-inline: 1.75rem;
+  font-size: 1.05rem;
+}
+
+.lp-botao-secundario {
+  min-height: 52px;
+  border: 1.5px solid var(--title);
+  color: var(--title);
+  font-size: 1.05rem;
+}
+
+.lp-botao-secundario:hover {
+  background: var(--title);
+  color: #fff;
+}
+
+.lp-botao-claro {
+  background: #fff;
+  color: var(--title);
+}
+
+.lp-botao-claro:hover {
+  background: var(--menta);
+}
+
+.lp a:focus-visible,
+.lp button:focus-visible,
+.lp input:focus-visible {
+  outline: 3px solid var(--green);
+  outline-offset: 3px;
+}
+
+/* herói */
+
+.lp-heroi {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  gap: 3rem;
+  align-items: center;
+  padding-block: 2.5rem 4rem;
+}
+
+.lp-heroi h1 {
+  max-width: 22ch;
+  margin: 0;
+  font-size: 64px;
+  font-weight: 640;
+  font-stretch: 86%;
+  line-height: 1.02;
+  letter-spacing: -0.035em;
+  text-wrap: balance;
+}
+
+.lp-apoio {
+  max-width: 34rem;
+  margin: 1.25rem 0 0;
+  font-size: 18px;
+  line-height: 1.55;
+  color: var(--text);
+}
+
+.lp-ctas {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.75rem;
+  margin-top: 2rem;
+}
+
+.lp-aviso {
+  margin: 1rem 0 0;
+  font-size: 0.9rem;
+  color: var(--muted);
+}
+
+@media (max-width: 900px) {
+  .lp-heroi {
+    grid-template-columns: 1fr;
+    padding-block: 1.5rem 3rem;
+  }
+
+  .lp-heroi h1 {
+    font-size: 40px;
+    max-width: 14ch;
+  }
+
+  .lp-apoio {
+    font-size: 16px;
+  }
+}
+
+/* celular: a peça de destaque da página */
+
+.celular {
+  width: 336px;
+  max-width: 100%;
+  margin: 0 auto;
+  padding: 12px;
+  border-radius: 48px;
+  background: var(--title);
+  box-shadow:
+    0 0 0 1px #2c3444 inset,
+    0 30px 60px -20px rgb(17 24 39 / 45%);
+  animation: celular-entra 700ms cubic-bezier(0.2, 0.8, 0.2, 1) both 120ms;
+}
+
+@keyframes celular-entra {
+  from {
+    opacity: 0;
+    transform: translateY(24px) rotate(2deg);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .celular {
+    animation: none;
+  }
+}
+
+.celular-tela {
+  display: grid;
+  gap: 14px;
+  padding: 10px 16px 18px;
+  border-radius: 38px;
+  background: var(--bg);
+  font-size: 14px;
+}
+
+.celular-topo {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 2px 10px 0;
+  font-size: 12px;
+  font-weight: 600;
+}
+
+.celular-ilha {
+  width: 84px;
+  height: 22px;
+  border-radius: 999px;
+  background: var(--title);
+}
+
+.app-saldo {
+  display: grid;
+  gap: 2px;
+  padding: 4px 4px 0;
+}
+
+.app-saldo span {
+  font-weight: 600;
+}
+
+.app-saldo small {
+  color: var(--muted);
+}
+
+.app-saldo strong {
+  font-size: 30px;
+  font-weight: 650;
+  font-stretch: 90%;
+  letter-spacing: -0.02em;
+}
+
+.app-atalhos {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 6px;
+}
+
+.app-atalhos span {
+  padding: 8px 0;
+  border-radius: 12px;
+  background: #fff;
+  text-align: center;
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--text);
+}
+
+.app-atalhos .ativo {
+  background: var(--title);
+  color: #fff;
+}
+
+.app-pix {
+  display: grid;
+  gap: 8px;
+  padding: 16px;
+  border-radius: 22px;
+  background: #fff;
+}
+
+.app-pix-cabeca {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 8px;
+}
+
+.app-pix-cabeca small,
+.app-rotulo {
+  color: var(--muted);
+  font-size: 12px;
+}
+
+.app-rotulo {
+  margin-top: 4px;
+}
+
+.app-valor {
+  font-size: 34px;
+  font-weight: 650;
+  font-stretch: 88%;
+  letter-spacing: -0.03em;
+  line-height: 1;
+}
+
+.app-pix input[type='range'] {
+  width: 100%;
+  accent-color: var(--green);
+}
+
+.app-prazos {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 6px;
+}
+
+.app-prazos button {
+  min-height: 34px;
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  background: var(--bg);
+  color: var(--title);
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.app-prazos button[aria-checked='true'] {
+  border-color: var(--green);
+  background: var(--green-soft);
+  color: var(--green-dark);
+}
+
+.app-parcela {
+  display: grid;
+  gap: 2px;
+  margin: 4px 0 0;
+  padding: 10px 12px;
+  border-radius: 14px;
+  background: var(--bg);
+}
+
+.app-parcela span {
+  font-size: 16px;
+}
+
+.app-parcela strong {
+  font-size: 20px;
+}
+
+.app-parcela small {
+  color: var(--muted);
+  font-size: 12px;
+}
+
+.app-botao {
+  display: grid;
+  place-items: center;
+  min-height: 44px;
+  border-radius: 999px;
+  background: var(--green);
+  color: #fff;
+  font-weight: 600;
+  text-decoration: none;
+}
+
+/* seções */
+
+.lp-secao {
+  padding-block: 64px;
+}
+
+@media (min-width: 900px) {
+  .lp-secao {
+    padding-block: 96px;
+  }
+}
+
+.lp h2 {
+  max-width: 20ch;
+  margin: 0;
+  font-size: clamp(30px, 4vw, 44px);
+  font-weight: 640;
+  font-stretch: 88%;
+  line-height: 1.08;
+  letter-spacing: -0.03em;
+}
+
+/* produtos: uma tabela de verdade, porque é comparação */
+
+.lp-produtos {
+  width: 100%;
+  margin-top: 2.5rem;
+  border-collapse: collapse;
+  font-size: 16px;
+}
+
+.lp-produtos thead th {
+  padding: 0 1rem 0.75rem 0;
+  border-bottom: 2px solid var(--title);
+  color: var(--muted);
+  font-size: 14px;
+  font-weight: 600;
+  text-align: left;
+}
+
+.lp-produtos tbody th,
+.lp-produtos td {
+  padding: 1.25rem 1rem 1.25rem 0;
+  border-bottom: 1px solid var(--border);
+  text-align: left;
+  vertical-align: top;
+}
+
+.lp-produtos tbody th {
+  font-weight: inherit;
+}
+
+.lp-produtos tbody th strong {
+  display: block;
+  font-size: 20px;
+  font-weight: 620;
+}
+
+.lp-produtos tbody th span {
+  color: var(--muted);
+}
+
+.lp-produtos td {
+  white-space: nowrap;
+}
+
+@media (max-width: 700px) {
+  .lp-produtos thead {
+    display: none;
+  }
+
+  .lp-produtos tr {
+    display: grid;
+    padding-block: 1rem;
+    border-bottom: 1px solid var(--border);
+  }
+
+  .lp-produtos tbody th,
+  .lp-produtos td {
+    padding: 0.15rem 0;
+    border: none;
+  }
+
+  .lp-produtos tbody th {
+    margin-bottom: 0.35rem;
+  }
+
+  .lp-produtos td:last-child::before {
+    content: 'Taxa de referência: ';
+    color: var(--muted);
+  }
+}
+
+/* bloco escuro com um produto em destaque */
+
+.lp-escuro {
+  padding-block: 64px;
+  background: var(--title);
+  color: #fff;
+}
+
+@media (min-width: 900px) {
+  .lp-escuro {
+    padding-block: 96px;
+  }
+}
+
+.lp-escuro h2 {
+  color: #fff;
+}
+
+.lp-escuro .lp-apoio {
+  margin-bottom: 2rem;
+  color: #d1d5db;
+}
+
+.lp-escuro-grade {
+  display: grid;
+  grid-template-columns: minmax(0, 1.1fr) minmax(0, 1fr);
+  gap: 3rem;
+  align-items: center;
+}
+
+@media (max-width: 900px) {
+  .lp-escuro-grade {
+    grid-template-columns: 1fr;
+  }
+}
+
+.lp-exemplo dl {
+  display: grid;
+  gap: 1.25rem;
+  margin: 0;
+}
+
+.lp-exemplo {
+  display: grid;
+  gap: 1.25rem;
+  margin: 0;
+  padding: 2rem;
+  border-radius: 28px;
+  background: #1f2937;
+}
+
+.lp-exemplo dt {
+  color: #9ca3af;
+  font-size: 15px;
+}
+
+.lp-exemplo dd {
+  margin: 0.15rem 0 0;
+  font-size: 28px;
+  font-weight: 620;
+  letter-spacing: -0.02em;
+}
+
+.lp-exemplo-destaque dd {
+  color: var(--menta);
+  font-size: 52px;
+  font-stretch: 86%;
+  line-height: 1;
+  letter-spacing: -0.035em;
+}
+
+.lp-exemplo p {
+  margin: 0;
+  color: #9ca3af;
+  font-size: 14px;
+}
+
+/* passos: é uma sequência, então números fazem sentido */
+
+.lp-passos {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 2rem;
+  margin: 2.5rem 0;
+  padding: 0;
+  list-style: none;
+  counter-reset: passo;
+}
+
+.lp-passos li {
+  padding-top: 1.25rem;
+  border-top: 2px solid var(--title);
+  counter-increment: passo;
+}
+
+.lp-passos li::before {
+  content: counter(passo);
+  display: block;
+  margin-bottom: 0.75rem;
+  color: var(--green);
+  font-size: 40px;
+  font-weight: 650;
+  font-stretch: 80%;
+  line-height: 1;
+}
+
+.lp-passos h3 {
+  margin: 0;
+  font-size: 22px;
+  font-weight: 620;
+}
+
+.lp-passos p {
+  margin: 0.4rem 0 0;
+  color: var(--text);
+  font-size: 16px;
+}
+
+@media (max-width: 700px) {
+  .lp-passos {
+    grid-template-columns: 1fr;
+  }
+}
+
+/* rodapé */
+
+.lp-rodape {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 1rem;
+  justify-content: space-between;
+  padding-block: 2rem 3rem;
+  border-top: 1px solid var(--border);
+  color: var(--muted);
+  font-size: 14px;
+}
+
+.lp-rodape p {
+  max-width: 40rem;
+  margin: 0;
+}
+
+.lp-rodape a {
+  color: var(--title);
+  font-weight: 600;
+}

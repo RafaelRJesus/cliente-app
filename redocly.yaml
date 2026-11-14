@@ -1,0 +1,11 @@
+# Validação da documentação da API (npm run docs:api).
+extends:
+  - recommended
+rules:
+  # Os esquemas de dados (Cliente, Contrato...) ficam como referência de leitura:
+  # a API do Firestore devolve os campos embrulhados com o tipo.
+  no-unused-components: off
+  # O ViaCEP usa a barra no fim do caminho (/ws/{cep}/json/).
+  no-path-trailing-slash: off
+  # Projeto pessoal de estudo, sem licença.
+  info-license: off

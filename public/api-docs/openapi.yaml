@@ -1,0 +1,1243 @@
+openapi: 3.1.0
+info:
+  title: Respawn, APIs do simulador de crédito
+  version: 1.0.0
+  summary: Chamadas HTTP que o app Respawn faz para guardar dados e consultar serviços externos.
+  description: |
+    O Respawn não tem servidor próprio. O navegador fala direto com três grupos de API:
+
+    1. **Firebase Authentication** (Identity Toolkit): cria conta, entra e manda e-mails de
+       confirmação e de troca de senha. Devolve o `idToken` usado nas outras chamadas.
+    2. **Cloud Firestore** (API REST v1): é o banco. Cada coleção abaixo é um "recurso" da API, e
+       quem decide o que cada perfil pode ler e gravar são as regras em `firestore.rules`.
+       O app usa o SDK do Firebase, que por baixo faz exatamente estas chamadas.
+    3. **APIs públicas** que o app consulta: CEP (BrasilAPI e ViaCEP), tabela FIPE e taxas do
+       Banco Central.
+
+    ## Perfis de acesso
+
+    | Perfil | Como nasce | O que pode |
+    |---|---|---|
+    | `admin` | criado à mão no console; só vale com login pelo Google | tudo da equipe, cadastra e remove gestores, bloqueia usuários |
+    | `gestor` | o admin cadastra o e-mail em `gestores`; a pessoa cria a conta com esse e-mail | carteira inteira: clientes e contratos |
+    | `cliente` | cria a própria conta e informa o CPF de um cadastro com o mesmo e-mail | ver, pagar e simular os próprios contratos |
+
+    Toda chamada ao Firestore precisa do cabeçalho `Authorization: Bearer <idToken>`, e quase
+    todas exigem e-mail confirmado (`email_verified`).
+
+    ## Formato dos documentos no Firestore
+
+    A API REST do Firestore embrulha cada valor com o tipo: `{"stringValue": "Ana"}`,
+    `{"integerValue": "3"}`, `{"doubleValue": 0.032}`, `{"mapValue": {"fields": {...}}}`,
+    `{"arrayValue": {"values": [...]}}`. Os esquemas desta documentação mostram os campos
+    **já desembrulhados**, como o app os usa; os exemplos de requisição mostram o formato real.
+
+    ## Números de cadastro
+
+    - **Número do cliente**: 7 dígitos, sequencial, vindo do contador `contadores/clientes`.
+    - **Número do contrato**: 13 dígitos `PPP CCCCCCC SSS`: prefixo do produto (101 pessoal,
+      102 consignado, 103 veículo, 104 imóvel, 105 Pix parcelado), número do cliente e a sequência
+      do contrato daquele cliente. Os dois só são aceitos numa transação
+      ([`documents:commit`](#/Transações/commit)) que avança o contador na mesma gravação.
+
+    > Projeto de estudo: use apenas dados fictícios.
+  contact:
+    name: Repositório no GitHub
+    url: https://github.com/RafaelRJesus/cliente-app
+
+servers:
+  - url: https://firestore.googleapis.com/v1/projects/cliente-app-1a979/databases/(default)
+    description: Cloud Firestore (produção)
+
+tags:
+  - name: Autenticação
+    description: Firebase Authentication (Identity Toolkit). Usa a chave pública do app web no parâmetro `key`.
+  - name: Usuários
+    description: Perfil de acesso de cada conta (`usuarios/{uid}`).
+  - name: Gestores
+    description: Convites de gestor, pelo e-mail (`gestores/{email}`). Só o admin mexe.
+  - name: Clientes
+    description: Cadastro de clientes. O id do documento é o CPF só com números, o que garante um cadastro por CPF.
+  - name: Contratos
+    description: Contratos de crédito com o cronograma de parcelas. Pagar uma parcela é alterar o cronograma.
+  - name: Contadores
+    description: Contador do número do cliente.
+  - name: Transações
+    description: Gravações atômicas. Cadastro de cliente e contratação sempre passam por aqui.
+  - name: Consultas
+    description: Listagens filtradas.
+  - name: CEP
+    description: Endereço pelo CEP. BrasilAPI primeiro, ViaCEP se ela falhar.
+  - name: FIPE
+    description: Tabela FIPE para o crédito com garantia de veículo.
+  - name: Banco Central
+    description: Taxas médias de juros por modalidade (API Olinda), usadas como taxa sugerida.
+
+security:
+  - firebaseIdToken: []
+
+paths:
+  # ---------------------------------------------------------------- autenticação
+  /accounts:signUp:
+    servers: &identity
+      - url: https://identitytoolkit.googleapis.com/v1
+        description: Firebase Authentication
+    post:
+      tags: [Autenticação]
+      operationId: criarConta
+      summary: Criar conta com e-mail e senha
+      description: Logo depois, o app chama `sendOobCode` para mandar o e-mail de confirmação.
+      security: [{ firebaseApiKey: [] }]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [email, password, returnSecureToken]
+              properties:
+                email: { type: string, format: email, example: ana.teste@exemplo.com }
+                password: { type: string, minLength: 6, example: senha-de-teste }
+                returnSecureToken: { type: boolean, const: true }
+      responses:
+        '200': { $ref: '#/components/responses/Sessao' }
+        '400':
+          description: '`EMAIL_EXISTS`, `WEAK_PASSWORD` ou `INVALID_EMAIL`.'
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/ErroAuth' }
+
+  /accounts:signInWithPassword:
+    servers: *identity
+    post:
+      tags: [Autenticação]
+      operationId: entrar
+      summary: Entrar com e-mail e senha
+      description: |
+        Gestor e cliente entram assim. O admin **não**: as regras só reconhecem o admin quando
+        `sign_in_provider` é `google.com` (login com Google, feito pelo SDK num pop-up).
+      security: [{ firebaseApiKey: [] }]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [email, password, returnSecureToken]
+              properties:
+                email: { type: string, format: email }
+                password: { type: string }
+                returnSecureToken: { type: boolean, const: true }
+      responses:
+        '200': { $ref: '#/components/responses/Sessao' }
+        '400':
+          description: '`INVALID_LOGIN_CREDENTIALS` ou `USER_DISABLED`.'
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/ErroAuth' }
+
+  /accounts:sendOobCode:
+    servers: *identity
+    post:
+      tags: [Autenticação]
+      operationId: enviarEmail
+      summary: Mandar e-mail de confirmação ou de troca de senha
+      security: [{ firebaseApiKey: [] }]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              oneOf:
+                - title: Confirmação de e-mail
+                  type: object
+                  required: [requestType, idToken]
+                  properties:
+                    requestType: { const: VERIFY_EMAIL }
+                    idToken: { type: string, description: Token da conta recém-criada. }
+                - title: Troca de senha
+                  type: object
+                  required: [requestType, email]
+                  properties:
+                    requestType: { const: PASSWORD_RESET }
+                    email: { type: string, format: email }
+      responses:
+        '200':
+          description: E-mail enviado.
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  email: { type: string }
+        '400':
+          description: '`TOO_MANY_ATTEMPTS_TRY_LATER` ou e-mail inválido.'
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/ErroAuth' }
+
+  # ---------------------------------------------------------------- usuários
+  /documents/usuarios/{uid}:
+    parameters:
+      - name: uid
+        in: path
+        required: true
+        description: O `localId` da conta no Firebase Authentication.
+        schema: { type: string }
+    get:
+      tags: [Usuários]
+      operationId: lerUsuario
+      summary: Ler o perfil de acesso
+      description: 'Permissão: a própria conta, ou o admin.'
+      responses:
+        '200':
+          description: Perfil encontrado.
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/DocUsuario' }
+        '403': { $ref: '#/components/responses/Negado' }
+        '404': { $ref: '#/components/responses/NaoEncontrado' }
+    patch:
+      tags: [Usuários]
+      operationId: alterarBloqueio
+      summary: Bloquear ou desbloquear um usuário
+      description: |
+        Permissão: admin. Só o campo `bloqueado` pode mudar, e nunca de outro admin.
+        Usuário bloqueado perde o acesso a clientes e contratos na hora.
+      parameters:
+        - name: updateMask.fieldPaths
+          in: query
+          required: true
+          schema: { type: string, enum: [bloqueado] }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/CorpoFirestore' }
+            example:
+              fields: { bloqueado: { booleanValue: true } }
+      responses:
+        '200':
+          description: Perfil atualizado.
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/DocUsuario' }
+        '403': { $ref: '#/components/responses/Negado' }
+
+  /documents/usuarios:
+    get:
+      tags: [Usuários]
+      operationId: listarUsuarios
+      summary: Listar usuários
+      description: 'Permissão: admin. Usada na tela Usuários.'
+      parameters:
+        - $ref: '#/components/parameters/pageSize'
+        - $ref: '#/components/parameters/pageToken'
+      responses:
+        '200':
+          description: Página de perfis.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ListaDeDocumentos'
+        '403': { $ref: '#/components/responses/Negado' }
+    post:
+      tags: [Usuários]
+      operationId: criarPerfil
+      summary: Criar o próprio perfil no primeiro acesso
+      description: |
+        Feito pela tela "Completar cadastro", com o e-mail já confirmado. `documentId` tem de ser
+        o próprio `uid` e `email` tem de ser o e-mail da conta. Ninguém cria perfil de admin.
+
+        - **gestor**: o e-mail precisa existir em `gestores`.
+        - **cliente**: `clienteId` é o CPF de um cadastro em `clientes` com o mesmo e-mail.
+      parameters:
+        - name: documentId
+          in: query
+          required: true
+          description: O `uid` de quem está logado.
+          schema: { type: string }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/CorpoFirestore' }
+            examples:
+              cliente:
+                summary: Cliente
+                value:
+                  fields:
+                    papel: { stringValue: cliente }
+                    email: { stringValue: ana.teste@exemplo.com }
+                    nome: { stringValue: Ana Teste }
+                    clienteId: { stringValue: '11144477735' }
+                    criadoEm: { stringValue: '2026-11-13T21:00:00.000Z' }
+              gestor:
+                summary: Gestor convidado
+                value:
+                  fields:
+                    papel: { stringValue: gestor }
+                    email: { stringValue: gestor.teste@exemplo.com }
+                    nome: { stringValue: Gestor Teste }
+                    criadoEm: { stringValue: '2026-11-13T21:00:00.000Z' }
+      responses:
+        '200':
+          description: Perfil criado.
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/DocUsuario' }
+        '403': { $ref: '#/components/responses/Negado' }
+        '409': { $ref: '#/components/responses/JaExiste' }
+
+  # ---------------------------------------------------------------- gestores
+  /documents/gestores:
+    get:
+      tags: [Gestores]
+      operationId: listarGestores
+      summary: Listar gestores convidados
+      description: 'Permissão: admin.'
+      responses:
+        '200':
+          description: Convites.
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/ListaDeDocumentos' }
+        '403': { $ref: '#/components/responses/Negado' }
+    post:
+      tags: [Gestores]
+      operationId: convidarGestor
+      summary: Convidar um gestor
+      description: 'Permissão: admin. O id do documento é o e-mail do gestor, em minúsculas (até 160 caracteres).'
+      parameters:
+        - name: documentId
+          in: query
+          required: true
+          schema: { type: string, format: email, maxLength: 160 }
+          example: gestor.teste@exemplo.com
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/CorpoFirestore' }
+            example:
+              fields:
+                nome: { stringValue: Gestor Teste }
+                criadoEm: { stringValue: '2026-11-13T21:00:00.000Z' }
+      responses:
+        '200':
+          description: Convite criado.
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/DocGestor' }
+        '403': { $ref: '#/components/responses/Negado' }
+        '409': { $ref: '#/components/responses/JaExiste' }
+
+  /documents/gestores/{email}:
+    parameters:
+      - name: email
+        in: path
+        required: true
+        schema: { type: string, format: email }
+    get:
+      tags: [Gestores]
+      operationId: lerConvite
+      summary: Conferir um convite
+      description: 'Permissão: admin, ou a própria pessoa (o app confere o convite no primeiro acesso).'
+      responses:
+        '200':
+          description: Convite existe.
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/DocGestor' }
+        '403': { $ref: '#/components/responses/Negado' }
+        '404': { $ref: '#/components/responses/NaoEncontrado' }
+    delete:
+      tags: [Gestores]
+      operationId: removerGestor
+      summary: Remover um gestor
+      description: 'Permissão: admin. Sem o convite, o gestor perde o acesso à carteira, mesmo com o perfil ainda existindo.'
+      responses:
+        '200': { description: Convite removido. }
+        '403': { $ref: '#/components/responses/Negado' }
+
+  # ---------------------------------------------------------------- clientes
+  /documents/clientes:
+    get:
+      tags: [Clientes]
+      operationId: listarClientes
+      summary: Listar clientes
+      description: 'Permissão: equipe (admin e gestor ativos).'
+      parameters:
+        - $ref: '#/components/parameters/pageSize'
+        - $ref: '#/components/parameters/pageToken'
+      responses:
+        '200':
+          description: Página de clientes.
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/ListaDeDocumentos' }
+        '403': { $ref: '#/components/responses/Negado' }
+
+  /documents/clientes/{cpf}:
+    parameters:
+      - $ref: '#/components/parameters/cpf'
+    get:
+      tags: [Clientes]
+      operationId: lerCliente
+      summary: Ler um cliente
+      description: 'Permissão: equipe, ou o próprio cliente.'
+      responses:
+        '200':
+          description: Cliente.
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/DocCliente' }
+        '403': { $ref: '#/components/responses/Negado' }
+        '404': { $ref: '#/components/responses/NaoEncontrado' }
+    patch:
+      tags: [Clientes]
+      operationId: alterarCliente
+      summary: Numerar cliente antigo
+      description: |
+        Permissão: equipe. Só duas alterações são aceitas, e as duas vão junto com o contador numa
+        transação ([`documents:commit`](#/Transações/commit)):
+
+        - dar `numero` a um cliente cadastrado antes da numeração (uma vez só);
+        - avançar `ultimoContrato` em 1 (até 999) ao contratar.
+
+        Dados pessoais (nome, e-mail, endereço) não podem ser alterados pela API.
+      responses:
+        '200':
+          description: Cliente atualizado.
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/DocCliente' }
+        '403': { $ref: '#/components/responses/Negado' }
+    delete:
+      tags: [Clientes]
+      operationId: removerCliente
+      summary: Remover um cliente
+      description: 'Permissão: equipe. O app só permite remover cliente sem contrato.'
+      responses:
+        '200': { description: Cliente removido. }
+        '403': { $ref: '#/components/responses/Negado' }
+
+  # ---------------------------------------------------------------- contratos
+  /documents/contratos:
+    get:
+      tags: [Contratos]
+      operationId: listarContratos
+      summary: Listar todos os contratos
+      description: |
+        Permissão: equipe. O cliente não consegue listar a coleção inteira; ele usa a consulta
+        filtrada por `clienteId` ([`runQuery`](#/Consultas/runQuery)).
+      parameters:
+        - $ref: '#/components/parameters/pageSize'
+        - $ref: '#/components/parameters/pageToken'
+      responses:
+        '200':
+          description: Página de contratos.
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/ListaDeDocumentos' }
+        '403': { $ref: '#/components/responses/Negado' }
+
+  /documents/contratos/{id}:
+    parameters:
+      - name: id
+        in: path
+        required: true
+        description: Id gerado pelo Firestore (não é o número do contrato).
+        schema: { type: string }
+    get:
+      tags: [Contratos]
+      operationId: lerContrato
+      summary: Ler um contrato
+      description: 'Permissão: equipe, ou o cliente dono do contrato.'
+      responses:
+        '200':
+          description: Contrato.
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/DocContrato' }
+        '403': { $ref: '#/components/responses/Negado' }
+        '404': { $ref: '#/components/responses/NaoEncontrado' }
+    patch:
+      tags: [Contratos]
+      operationId: pagarParcela
+      summary: Registrar pagamento de parcela
+      description: |
+        Permissão: equipe, ou o cliente dono. Só o campo `parcelas` pode mudar, e a lista precisa
+        continuar com o mesmo tamanho do prazo. A parcela paga recebe `pagaEm`, `valorPago` e
+        `formaPagamento` (`dinheiro` só pela equipe, no balcão; o app esconde essa opção do cliente).
+
+        As regras conferem o formato da primeira e da última parcela (as regras do Firestore não
+        têm laço), e o valor pago é calculado no navegador, com multa de 2% e juros de mora de
+        1% ao mês pro rata quando há atraso.
+      parameters:
+        - name: updateMask.fieldPaths
+          in: query
+          required: true
+          schema: { type: string, enum: [parcelas] }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/CorpoFirestore' }
+            example:
+              fields:
+                parcelas:
+                  arrayValue:
+                    values:
+                      - mapValue:
+                          fields:
+                            numero: { integerValue: '1' }
+                            vencimento: { stringValue: '2026-12-13' }
+                            valor: { doubleValue: 1128.25 }
+                            juros: { doubleValue: 500 }
+                            amortizacao: { doubleValue: 628.25 }
+                            saldo: { doubleValue: 9371.75 }
+                            pagaEm: { stringValue: '2026-11-13' }
+                            valorPago: { doubleValue: 1128.25 }
+                            formaPagamento: { stringValue: pix }
+      responses:
+        '200':
+          description: Pagamento registrado.
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/DocContrato' }
+        '403': { $ref: '#/components/responses/Negado' }
+    delete:
+      tags: [Contratos]
+      operationId: excluirContrato
+      summary: Excluir um contrato
+      description: 'Permissão: equipe. Apaga também o histórico de pagamentos.'
+      responses:
+        '200': { description: Contrato excluído. }
+        '403': { $ref: '#/components/responses/Negado' }
+
+  # ---------------------------------------------------------------- contadores
+  /documents/contadores/clientes:
+    get:
+      tags: [Contadores]
+      operationId: lerContador
+      summary: Ler o último número de cliente usado
+      description: 'Permissão: qualquer conta logada. Só muda dentro de uma transação, de 1 em 1.'
+      responses:
+        '200':
+          description: Contador.
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/DocContador' }
+        '404':
+          description: Ainda não existe (nenhum cliente numerado). O primeiro cadastro cria com `ultimo = 1`.
+
+  # ---------------------------------------------------------------- transações
+  /documents:beginTransaction:
+    post:
+      tags: [Transações]
+      operationId: beginTransaction
+      summary: Abrir uma transação
+      description: O SDK abre a transação, lê o contador e o cliente e depois grava tudo com `commit`.
+      requestBody:
+        content:
+          application/json:
+            schema: { type: object }
+            example: {}
+      responses:
+        '200':
+          description: Transação aberta.
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  transaction: { type: string, format: byte }
+        '403': { $ref: '#/components/responses/Negado' }
+
+  /documents:commit:
+    post:
+      tags: [Transações]
+      operationId: commit
+      summary: Gravar cadastro de cliente ou contratação
+      description: |
+        As duas gravações numeradas do app são atômicas:
+
+        **Cadastro de cliente**: cria `clientes/{cpf}` com `numero = ultimo + 1` e avança
+        `contadores/clientes` para o mesmo valor. A equipe cadastra qualquer cliente; uma conta
+        sem perfil só cadastra o próprio, com o e-mail dela já confirmado.
+
+        **Contratação** (equipe): cria `contratos/{id}` com `sequencia = ultimoContrato + 1` e
+        `numeroContrato = prefixo × 10¹⁰ + numero × 10³ + sequencia`, e avança
+        `clientes/{cpf}.ultimoContrato`. Limites: valor de R$ 0,01 a R$ 2.100.000, taxa de 0 a 20%
+        ao mês, prazo de 1 a 240 meses, sistema `PRICE` ou `SAC`.
+
+        Se o contador não bater (dois cadastros ao mesmo tempo, por exemplo), as regras recusam
+        e o SDK tenta de novo com o número seguinte.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [writes]
+              properties:
+                transaction: { type: string, format: byte }
+                writes:
+                  type: array
+                  items: { $ref: '#/components/schemas/Escrita' }
+            examples:
+              cadastroDeCliente:
+                summary: Cadastro de cliente (número 26)
+                value:
+                  writes:
+                    - update:
+                        name: projects/cliente-app-1a979/databases/(default)/documents/clientes/11144477735
+                        fields:
+                          nome: { stringValue: Ana Teste }
+                          email: { stringValue: ana.teste@exemplo.com }
+                          telefone: { stringValue: (51) 99999-8888 }
+                          cpf: { stringValue: 111.444.777-35 }
+                          numero: { integerValue: '26' }
+                          criadoPor: { stringValue: uid-do-gestor }
+                          criadoEm: { stringValue: '2026-11-13T21:00:00.000Z' }
+                          endereco:
+                            mapValue:
+                              fields:
+                                cep: { stringValue: 01001-000 }
+                                logradouro: { stringValue: Praça da Sé }
+                                numero: { stringValue: '100' }
+                                bairro: { stringValue: Sé }
+                                cidade: { stringValue: São Paulo }
+                                uf: { stringValue: SP }
+                      currentDocument: { exists: false }
+                    - update:
+                        name: projects/cliente-app-1a979/databases/(default)/documents/contadores/clientes
+                        fields:
+                          ultimo: { integerValue: '26' }
+              contratacao:
+                summary: Contrato pessoal, 1º do cliente 26
+                value:
+                  writes:
+                    - update:
+                        name: projects/cliente-app-1a979/databases/(default)/documents/contratos/gerado-pelo-sdk
+                        fields:
+                          clienteId: { stringValue: '11144477735' }
+                          clienteNome: { stringValue: Ana Teste }
+                          produto: { stringValue: pessoal }
+                          numeroContrato: { stringValue: '1010000026001' }
+                          sequencia: { integerValue: '1' }
+                          valor: { doubleValue: 10000 }
+                          taxaMensal: { doubleValue: 0.05 }
+                          prazo: { integerValue: '12' }
+                          sistema: { stringValue: PRICE }
+                          dataContratacao: { stringValue: '2026-11-13' }
+                          detalhes: { mapValue: { fields: {} } }
+                          parcelas:
+                            arrayValue:
+                              values:
+                                - mapValue:
+                                    fields:
+                                      numero: { integerValue: '1' }
+                                      vencimento: { stringValue: '2026-12-13' }
+                                      valor: { doubleValue: 1128.25 }
+                                      juros: { doubleValue: 500 }
+                                      amortizacao: { doubleValue: 628.25 }
+                                      saldo: { doubleValue: 9371.75 }
+                          criadoPor: { stringValue: uid-do-gestor }
+                          criadoEm: { stringValue: '2026-11-13T21:00:00.000Z' }
+                      currentDocument: { exists: false }
+                    - update:
+                        name: projects/cliente-app-1a979/databases/(default)/documents/clientes/11144477735
+                        fields:
+                          ultimoContrato: { integerValue: '1' }
+                      updateMask: { fieldPaths: [ultimoContrato] }
+      responses:
+        '200':
+          description: Tudo gravado.
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  commitTime: { type: string, format: date-time }
+        '403': { $ref: '#/components/responses/Negado' }
+        '409':
+          description: Outra gravação mexeu no contador antes. O SDK repete a transação.
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/ErroFirestore' }
+
+  # ---------------------------------------------------------------- consultas
+  /documents:runQuery:
+    post:
+      tags: [Consultas]
+      operationId: runQuery
+      summary: Contratos de um cliente
+      description: |
+        É assim que o cliente vê "Meus contratos": a consulta precisa filtrar pelo `clienteId` dele,
+        senão as regras recusam a lista inteira.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                structuredQuery: { type: object }
+            example:
+              structuredQuery:
+                from: [{ collectionId: contratos }]
+                where:
+                  fieldFilter:
+                    field: { fieldPath: clienteId }
+                    op: EQUAL
+                    value: { stringValue: '11144477735' }
+      responses:
+        '200':
+          description: Um item por documento encontrado.
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  type: object
+                  properties:
+                    document: { $ref: '#/components/schemas/DocContrato' }
+                    readTime: { type: string, format: date-time }
+        '403': { $ref: '#/components/responses/Negado' }
+
+  # ---------------------------------------------------------------- APIs externas
+  /api/cep/v2/{cep}:
+    servers:
+      - url: https://brasilapi.com.br
+        description: BrasilAPI
+    get:
+      tags: [CEP]
+      operationId: cepBrasilApi
+      summary: Endereço pelo CEP (BrasilAPI)
+      description: 'O app usa `street`, `neighborhood`, `city` e `state`. Se der erro, tenta o ViaCEP.'
+      security: []
+      parameters:
+        - $ref: '#/components/parameters/cep'
+      responses:
+        '200':
+          description: Endereço encontrado.
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [city, state]
+                properties:
+                  cep: { type: string, example: '01001000' }
+                  state: { type: string, example: SP }
+                  city: { type: string, example: São Paulo }
+                  neighborhood: { type: string, example: Sé }
+                  street: { type: string, example: Praça da Sé }
+        '404': { description: CEP não encontrado. }
+
+  /ws/{cep}/json/:
+    servers:
+      - url: https://viacep.com.br
+        description: ViaCEP
+    get:
+      tags: [CEP]
+      operationId: cepViaCep
+      summary: Endereço pelo CEP (ViaCEP, reserva)
+      description: 'CEP que não existe volta com status 200 e `{"erro": true}`.'
+      security: []
+      parameters:
+        - $ref: '#/components/parameters/cep'
+      responses:
+        '200':
+          description: Endereço, ou `erro` quando o CEP não existe.
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  logradouro: { type: string }
+                  bairro: { type: string }
+                  localidade: { type: string }
+                  uf: { type: string }
+                  erro: { type: boolean }
+        '400': { description: CEP com formato inválido. }
+
+  /{tipo}/marcas:
+    servers: &fipe
+      - url: https://parallelum.com.br/fipe/api/v1
+        description: API aberta da tabela FIPE (com limite de chamadas por dia; o app guarda em cache)
+    get:
+      tags: [FIPE]
+      operationId: fipeMarcas
+      summary: Marcas
+      security: []
+      parameters:
+        - $ref: '#/components/parameters/tipoVeiculo'
+      responses:
+        '200':
+          description: Marcas do tipo de veículo.
+          content:
+            application/json:
+              schema:
+                type: array
+                items: { $ref: '#/components/schemas/ItemFipe' }
+        '429': { description: Limite diário de chamadas da API FIPE atingido. }
+
+  /{tipo}/marcas/{marca}/modelos:
+    servers: *fipe
+    get:
+      tags: [FIPE]
+      operationId: fipeModelos
+      summary: Modelos de uma marca
+      security: []
+      parameters:
+        - $ref: '#/components/parameters/tipoVeiculo'
+        - { name: marca, in: path, required: true, schema: { type: string }, example: '59' }
+      responses:
+        '200':
+          description: Modelos (o app usa só a lista `modelos`).
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  modelos:
+                    type: array
+                    items: { $ref: '#/components/schemas/ItemFipe' }
+                  anos:
+                    type: array
+                    items: { $ref: '#/components/schemas/ItemFipe' }
+        '429': { description: Limite diário de chamadas da API FIPE atingido. }
+
+  /{tipo}/marcas/{marca}/modelos/{modelo}/anos:
+    servers: *fipe
+    get:
+      tags: [FIPE]
+      operationId: fipeAnos
+      summary: Anos de um modelo
+      description: O ano `32000` significa zero km; o app mostra "Zero km".
+      security: []
+      parameters:
+        - $ref: '#/components/parameters/tipoVeiculo'
+        - { name: marca, in: path, required: true, schema: { type: string } }
+        - { name: modelo, in: path, required: true, schema: { type: string } }
+      responses:
+        '200':
+          description: Anos e combustíveis.
+          content:
+            application/json:
+              schema:
+                type: array
+                items: { $ref: '#/components/schemas/ItemFipe' }
+        '429': { description: Limite diário de chamadas da API FIPE atingido. }
+
+  /{tipo}/marcas/{marca}/modelos/{modelo}/anos/{ano}:
+    servers: *fipe
+    get:
+      tags: [FIPE]
+      operationId: fipePreco
+      summary: Preço FIPE
+      description: O valor vem como texto (`R$ 59.777,00`) e o app converte para número.
+      security: []
+      parameters:
+        - $ref: '#/components/parameters/tipoVeiculo'
+        - { name: marca, in: path, required: true, schema: { type: string } }
+        - { name: modelo, in: path, required: true, schema: { type: string } }
+        - { name: ano, in: path, required: true, schema: { type: string }, example: 2020-1 }
+      responses:
+        '200':
+          description: Preço do veículo no mês de referência.
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  Valor: { type: string, example: 'R$ 59.777,00' }
+                  Marca: { type: string }
+                  Modelo: { type: string }
+                  AnoModelo: { type: integer, example: 2020 }
+                  Combustivel: { type: string, example: Gasolina }
+                  CodigoFipe: { type: string, example: 005340-6 }
+                  MesReferencia: { type: string, example: novembro de 2026 }
+        '429': { description: Limite diário de chamadas da API FIPE atingido. }
+
+  /TaxasJurosDiariaPorInicioPeriodo:
+    servers: &bcb
+      - url: https://olinda.bcb.gov.br/olinda/servico/taxaJuros/versao/v2/odata
+        description: Banco Central, API Olinda (OData)
+    get:
+      tags: [Banco Central]
+      operationId: bcbSemanal
+      summary: Taxas médias semanais por instituição
+      description: |
+        Duas chamadas: a primeira pega o período mais recente (`$top=1&$orderby=InicioPeriodo desc`),
+        a segunda traz as taxas de pessoa física desse período. O app calcula a mediana por
+        modalidade e usa como taxa sugerida no simulador. A primeira consulta do dia pode levar mais
+        de 10 segundos.
+      security: []
+      parameters:
+        - { $ref: '#/components/parameters/odataFilter' }
+        - { $ref: '#/components/parameters/odataOrderby' }
+        - { $ref: '#/components/parameters/odataTop' }
+        - { $ref: '#/components/parameters/odataSelect' }
+        - { $ref: '#/components/parameters/odataFormat' }
+      responses:
+        '200':
+          description: Linhas por instituição e modalidade.
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  value:
+                    type: array
+                    items:
+                      type: object
+                      properties:
+                        InicioPeriodo: { type: string, example: '2026-10-27' }
+                        FimPeriodo: { type: string, example: '2026-10-31' }
+                        Segmento: { type: string, example: PESSOA FÍSICA }
+                        Modalidade: { type: string, example: Crédito pessoal não consignado - Pré-fixado }
+                        InstituicaoFinanceira: { type: string }
+                        TaxaJurosAoMes: { type: number, example: 5.12 }
+        '400': { description: Filtro OData inválido. }
+
+  /TaxasJurosMensalPorMes:
+    servers: *bcb
+    get:
+      tags: [Banco Central]
+      operationId: bcbMensal
+      summary: Taxas médias mensais por instituição
+      description: Mesma lógica da semanal. É daqui que vem a taxa do financiamento imobiliário, que só sai na mensal. O mês vem como `Mmm-AAAA` (ex. `Set-2026`).
+      security: []
+      parameters:
+        - { $ref: '#/components/parameters/odataFilter' }
+        - { $ref: '#/components/parameters/odataOrderby' }
+        - { $ref: '#/components/parameters/odataTop' }
+        - { $ref: '#/components/parameters/odataSelect' }
+        - { $ref: '#/components/parameters/odataFormat' }
+      responses:
+        '200':
+          description: Linhas por instituição e modalidade.
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  value:
+                    type: array
+                    items:
+                      type: object
+                      properties:
+                        Mes: { type: string, example: Set-2026 }
+                        anoMes: { type: string, example: '2026-09' }
+                        Modalidade: { type: string, example: Financiamento imobiliário com taxas de mercado - Pós-fixado referenciado em IPCA }
+                        InstituicaoFinanceira: { type: string }
+                        TaxaJurosAoMes: { type: number, example: 1.21 }
+        '400': { description: Filtro OData inválido. }
+
+components:
+  securitySchemes:
+    firebaseIdToken:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
+      description: |
+        `idToken` devolvido pelo login (vale 1 hora; o SDK renova sozinho).
+        Traz `email_verified` e `firebase.sign_in_provider`, usados pelas regras.
+    firebaseApiKey:
+      type: apiKey
+      in: query
+      name: key
+      description: Chave pública do app web no Firebase (a mesma do `.env.local`). Não é segredo; quem protege os dados são as regras.
+
+  parameters:
+    cpf:
+      name: cpf
+      in: path
+      required: true
+      description: CPF só com números (11 dígitos). É também o id do documento.
+      schema: { type: string, pattern: '^[0-9]{11}$' }
+      example: '11144477735'
+    cep:
+      name: cep
+      in: path
+      required: true
+      schema: { type: string, pattern: '^[0-9]{8}$' }
+      example: '01001000'
+    tipoVeiculo:
+      name: tipo
+      in: path
+      required: true
+      schema: { type: string, enum: [carros, motos, caminhoes] }
+    pageSize:
+      name: pageSize
+      in: query
+      schema: { type: integer, minimum: 1, maximum: 300 }
+    pageToken:
+      name: pageToken
+      in: query
+      description: '`nextPageToken` da página anterior.'
+      schema: { type: string }
+    odataFilter:
+      name: $filter
+      in: query
+      schema: { type: string }
+      example: InicioPeriodo eq '2026-10-27' and Segmento eq 'PESSOA FÍSICA'
+    odataOrderby:
+      name: $orderby
+      in: query
+      schema: { type: string }
+      example: InicioPeriodo desc
+    odataTop:
+      name: $top
+      in: query
+      schema: { type: integer, maximum: 5000 }
+    odataSelect:
+      name: $select
+      in: query
+      schema: { type: string }
+      example: Modalidade,TaxaJurosAoMes
+    odataFormat:
+      name: $format
+      in: query
+      schema: { type: string, const: json }
+
+  responses:
+    Sessao:
+      description: Conta autenticada.
+      content:
+        application/json:
+          schema:
+            type: object
+            properties:
+              localId: { type: string, description: 'O `uid` da conta.' }
+              email: { type: string }
+              idToken: { type: string, description: Token para o cabeçalho Authorization. }
+              refreshToken: { type: string }
+              expiresIn: { type: string, example: '3600' }
+    Negado:
+      description: '`PERMISSION_DENIED`: as regras do Firestore recusaram (perfil errado, usuário bloqueado, e-mail não confirmado ou dado fora do formato).'
+      content:
+        application/json:
+          schema: { $ref: '#/components/schemas/ErroFirestore' }
+    NaoEncontrado:
+      description: '`NOT_FOUND`: documento não existe.'
+      content:
+        application/json:
+          schema: { $ref: '#/components/schemas/ErroFirestore' }
+    JaExiste:
+      description: '`ALREADY_EXISTS`: já existe documento com esse id (por exemplo, CPF já cadastrado).'
+      content:
+        application/json:
+          schema: { $ref: '#/components/schemas/ErroFirestore' }
+
+  schemas:
+    # ------------------------------------------------ dados (como o app usa)
+    Usuario:
+      type: object
+      required: [papel, email, nome, criadoEm]
+      properties:
+        papel: { type: string, enum: [admin, gestor, cliente] }
+        email: { type: string, format: email }
+        nome: { type: string, maxLength: 120 }
+        clienteId: { type: string, description: CPF do cadastro ligado à conta (só cliente). }
+        bloqueado: { type: boolean, default: false, description: Só o admin altera. }
+        criadoEm: { type: string, format: date-time }
+
+    Gestor:
+      type: object
+      required: [nome, criadoEm]
+      properties:
+        nome: { type: string, maxLength: 120 }
+        criadoEm: { type: string, format: date-time }
+
+    Endereco:
+      type: object
+      additionalProperties: false
+      properties:
+        cep: { type: string, maxLength: 9, example: 01001-000 }
+        logradouro: { type: string, maxLength: 120 }
+        numero: { type: string, maxLength: 10 }
+        complemento: { type: string, maxLength: 60 }
+        bairro: { type: string, maxLength: 60 }
+        cidade: { type: string, maxLength: 60 }
+        uf: { type: string, maxLength: 2 }
+
+    Cliente:
+      type: object
+      required: [nome, email, telefone, cpf, endereco, criadoEm, criadoPor, numero]
+      properties:
+        nome: { type: string, minLength: 1, maxLength: 120 }
+        email: { type: string, format: email, maxLength: 160 }
+        telefone: { type: string, maxLength: 20 }
+        cpf: { type: string, maxLength: 14, description: Com ou sem máscara; só os números precisam bater com o id. }
+        endereco: { $ref: '#/components/schemas/Endereco' }
+        numero: { type: integer, maximum: 9999999, description: 'Número do cliente (7 dígitos na tela: 0000026).' }
+        ultimoContrato: { type: integer, maximum: 999, description: Quantos contratos o cliente já teve. }
+        criadoPor: { type: string, description: '`uid` de quem cadastrou.' }
+        criadoEm: { type: string, format: date-time }
+
+    Parcela:
+      type: object
+      additionalProperties: false
+      required: [numero, vencimento, valor]
+      properties:
+        numero: { type: integer, minimum: 1 }
+        vencimento: { type: string, format: date }
+        valor: { type: number, description: Valor da parcela. }
+        juros: { type: number }
+        amortizacao: { type: number }
+        saldo: { type: number, description: Saldo devedor depois desta parcela. }
+        pagaEm: { type: string, format: date }
+        valorPago: { type: number, description: Inclui multa e mora quando paga em atraso. }
+        formaPagamento: { type: string, enum: [pix, credito, debito, boleto, dinheiro] }
+
+    Detalhes:
+      type: object
+      additionalProperties: false
+      description: Campos que dependem do produto.
+      properties:
+        convenio: { type: string, maxLength: 60, description: Consignado. }
+        renda: { type: number, description: Consignado (margem de 35%). }
+        placa: { type: string, maxLength: 8, description: Veículo. }
+        veiculo: { type: string, maxLength: 120 }
+        anoModelo: { type: number }
+        codigoFipe: { type: string, maxLength: 10 }
+        valorFipe: { type: number }
+        referenciaFipe: { type: string, maxLength: 40 }
+        tipoImovel: { type: string, maxLength: 30, description: Imóvel. }
+        valorImovel: { type: number }
+        valorPix: { type: number, description: Pix parcelado. }
+        iofFinanciado: { type: boolean }
+
+    Contrato:
+      type: object
+      required: [clienteId, clienteNome, produto, valor, taxaMensal, prazo, sistema, dataContratacao, parcelas, numeroContrato, sequencia, criadoEm, criadoPor]
+      properties:
+        clienteId: { type: string, maxLength: 11 }
+        clienteNome: { type: string, maxLength: 120 }
+        produto: { type: string, enum: [pessoal, consignado, veiculo, imovel, pix] }
+        numeroContrato: { type: string, pattern: '^[0-9]{13}$', example: '1010000026001', description: 'Na tela: 101.0000026.001.' }
+        sequencia: { type: integer, minimum: 1, maximum: 999 }
+        detalhes: { $ref: '#/components/schemas/Detalhes' }
+        valor: { type: number, exclusiveMinimum: 0, maximum: 2100000 }
+        taxaMensal: { type: number, minimum: 0, maximum: 0.2, example: 0.05 }
+        prazo: { type: integer, minimum: 1, maximum: 240 }
+        sistema: { type: string, enum: [PRICE, SAC] }
+        dataContratacao: { type: string, format: date }
+        iof: { type: number }
+        cetMensal: { type: number }
+        parcelas:
+          type: array
+          description: Uma por mês; o tamanho é sempre o prazo.
+          items: { $ref: '#/components/schemas/Parcela' }
+        criadoPor: { type: string }
+        criadoEm: { type: string, format: date-time }
+
+    Contador:
+      type: object
+      required: [ultimo]
+      properties:
+        ultimo: { type: integer, description: Último número de cliente usado. }
+
+    # ------------------------------------------------ envelope do Firestore
+    CorpoFirestore:
+      type: object
+      description: Corpo de gravação. Cada campo vai com o tipo (`stringValue`, `integerValue`...).
+      required: [fields]
+      properties:
+        fields:
+          type: object
+          additionalProperties: { $ref: '#/components/schemas/Valor' }
+
+    Valor:
+      type: object
+      description: Valor tipado do Firestore. Só uma das chaves vem preenchida.
+      properties:
+        nullValue: { type: 'null' }
+        booleanValue: { type: boolean }
+        integerValue: { type: string, description: Inteiro em texto. }
+        doubleValue: { type: number }
+        stringValue: { type: string }
+        mapValue:
+          type: object
+          properties:
+            fields: { type: object, additionalProperties: { $ref: '#/components/schemas/Valor' } }
+        arrayValue:
+          type: object
+          properties:
+            values: { type: array, items: { $ref: '#/components/schemas/Valor' } }
+
+    Documento:
+      type: object
+      properties:
+        name: { type: string, example: projects/cliente-app-1a979/databases/(default)/documents/clientes/11144477735 }
+        fields: { type: object, additionalProperties: { $ref: '#/components/schemas/Valor' } }
+        createTime: { type: string, format: date-time }
+        updateTime: { type: string, format: date-time }
+
+    DocUsuario:
+      allOf: [{ $ref: '#/components/schemas/Documento' }]
+      description: 'Documento cujos `fields` seguem [Usuario](#/components/schemas/Usuario).'
+    DocGestor:
+      allOf: [{ $ref: '#/components/schemas/Documento' }]
+      description: 'Documento cujos `fields` seguem [Gestor](#/components/schemas/Gestor).'
+    DocCliente:
+      allOf: [{ $ref: '#/components/schemas/Documento' }]
+      description: 'Documento cujos `fields` seguem [Cliente](#/components/schemas/Cliente).'
+    DocContrato:
+      allOf: [{ $ref: '#/components/schemas/Documento' }]
+      description: 'Documento cujos `fields` seguem [Contrato](#/components/schemas/Contrato).'
+    DocContador:
+      allOf: [{ $ref: '#/components/schemas/Documento' }]
+      description: 'Documento cujos `fields` seguem [Contador](#/components/schemas/Contador).'
+
+    ListaDeDocumentos:
+      type: object
+      properties:
+        documents:
+          type: array
+          items: { $ref: '#/components/schemas/Documento' }
+        nextPageToken: { type: string }
+
+    Escrita:
+      type: object
+      description: Uma gravação dentro do `commit`.
+      properties:
+        update: { $ref: '#/components/schemas/Documento' }
+        updateMask:
+          type: object
+          properties:
+            fieldPaths: { type: array, items: { type: string } }
+        currentDocument:
+          type: object
+          properties:
+            exists: { type: boolean, description: '`false` garante que o documento é novo.' }
+        delete: { type: string, description: Caminho do documento a apagar. }
+
+    ItemFipe:
+      type: object
+      properties:
+        codigo: { type: [string, integer] }
+        nome: { type: string }
+
+    ErroFirestore:
+      type: object
+      properties:
+        error:
+          type: object
+          properties:
+            code: { type: integer, example: 403 }
+            message: { type: string, example: Missing or insufficient permissions. }
+            status: { type: string, example: PERMISSION_DENIED }
+
+    ErroAuth:
+      type: object
+      properties:
+        error:
+          type: object
+          properties:
+            code: { type: integer, example: 400 }
+            message: { type: string, example: EMAIL_EXISTS }

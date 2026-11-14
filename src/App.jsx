@@ -20,7 +20,7 @@ import { Usuarios } from './pages/Usuarios'
 export default function App() {
   const { user, perfil, carregando, equipe, admin, erro, sair } = useAuth()
 
-  if (carregando) return <p className="empty tela-cheia">Carregando...</p>
+  if (carregando) return <p className="empty tela-cheia">Carregando seu progresso...</p>
 
   if (!user) {
     return (

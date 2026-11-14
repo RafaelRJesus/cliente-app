@@ -1202,7 +1202,6 @@ h2 {
 .progresso-contrato {
   display: grid;
   gap: 1rem;
-  margin-bottom: 1.5rem;
   padding: 1.5rem;
   border-radius: var(--radius);
   background: var(--navy);
@@ -1293,4 +1292,189 @@ h2 {
 .conquista-nova .link-button {
   margin-left: auto;
   color: var(--navy);
+}
+
+/* Visão geral */
+
+.acoes {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.6rem;
+}
+
+.primeira-maiuscula::first-letter {
+  text-transform: uppercase;
+}
+
+.kpi small {
+  display: block;
+  margin-top: 0.35rem;
+  color: var(--muted);
+  font-size: 0.82rem;
+}
+
+.card-titulo {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 1rem;
+}
+
+.card-titulo a {
+  font-size: 0.9rem;
+  font-weight: 600;
+}
+
+.painel-grade {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 1.25rem;
+  align-items: start;
+}
+
+.painel-grade > .card {
+  margin-bottom: 0;
+}
+
+@media (max-width: 900px) {
+  .painel-grade {
+    grid-template-columns: 1fr;
+  }
+}
+
+.list-titulo {
+  color: var(--title);
+  font-weight: 600;
+  text-decoration: none;
+}
+
+.list-titulo:hover {
+  text-decoration: underline;
+}
+
+.list-valor {
+  text-align: right;
+  white-space: nowrap;
+}
+
+.list-valor span {
+  display: block;
+  color: var(--muted);
+  font-size: 0.85rem;
+}
+
+.list-valor .vence-logo {
+  color: var(--title);
+  font-weight: 600;
+}
+
+.valor-atraso {
+  color: var(--red);
+}
+
+/* situação dos contratos: barra em três partes e legenda que filtra */
+
+.composicao {
+  display: flex;
+  gap: 3px;
+  height: 14px;
+  margin-top: 1rem;
+}
+
+.composicao span {
+  min-width: 6px;
+}
+
+.composicao-em-dia {
+  background: var(--marca);
+}
+
+.composicao-em-atraso {
+  background: var(--red);
+}
+
+.composicao-quitado {
+  background: #9ca3af;
+}
+
+.legenda {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem 1.75rem;
+  margin: 0.9rem 0 0;
+  padding: 0;
+  list-style: none;
+}
+
+.legenda a {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.45rem;
+  color: var(--text);
+  text-decoration: none;
+}
+
+.legenda a:hover {
+  color: var(--title);
+  text-decoration: underline;
+}
+
+.legenda strong {
+  color: var(--title);
+}
+
+.ponto {
+  width: 10px;
+  height: 10px;
+}
+
+/* saldo por produto */
+
+.por-produto {
+  width: 100%;
+  margin-top: 0.75rem;
+  border-collapse: collapse;
+}
+
+.por-produto th,
+.por-produto td {
+  padding: 0.7rem 0.5rem 0.7rem 0;
+  border-bottom: 1px solid var(--border);
+  text-align: left;
+  vertical-align: top;
+}
+
+.por-produto thead th {
+  color: var(--muted);
+  font-size: 0.85rem;
+  font-weight: 500;
+}
+
+.por-produto tbody th {
+  color: var(--title);
+  font-weight: 600;
+}
+
+.por-produto td:last-child {
+  width: 45%;
+}
+
+.por-produto-valor {
+  display: block;
+  font-weight: 600;
+  color: var(--title);
+}
+
+.por-produto-barra {
+  display: block;
+  min-width: 4px;
+  height: 6px;
+  margin-top: 0.4rem;
+  background: var(--marca);
+}
+
+@media (max-width: 600px) {
+  .page-header-row {
+    flex-wrap: wrap;
+  }
 }

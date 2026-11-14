@@ -42,3 +42,5 @@ test-results/
 
 # relatórios locais de QA
 qa-bug-hunt/
+# sobra da versão antiga da página da API (o Swagger agora vem empacotado pelo Vite)
+public/api-docs/vendor/

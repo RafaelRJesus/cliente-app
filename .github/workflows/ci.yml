@@ -50,7 +50,7 @@ jobs:
       - run: npm ci
       - run: npx playwright install --with-deps chromium
       - run: npm run test:e2e
-      - uses: actions/upload-artifact@v4
+      - uses: actions/upload-artifact@v6
         if: failure()
         with:
           name: playwright-report
@@ -92,7 +92,7 @@ jobs:
           npm ci
           npx playwright install --with-deps chromium
           npx playwright test --project=oraculo --project=ui-desktop --project=ui-mobile
-      - uses: actions/upload-artifact@v4
+      - uses: actions/upload-artifact@v6
         if: ${{ !cancelled() }}
         with:
           name: relatorio-qa-automacao

@@ -76,7 +76,7 @@ npm install
 npm run dev
 ```
 
-Sem `.env.local` o app salva tudo no `localStorage`, o que já basta pra testar. Nesse modo existe um admin de exemplo: **admin@rjbank.test / admin123** (não existe com Firebase).
+Sem `.env.local` o app salva tudo no `localStorage`, o que já basta pra testar. Nesse modo existe um admin de exemplo: **admin@respawn.test / admin123** (não existe com Firebase).
 
 Para usar o Firestore, copie `.env.example` para `.env.local` e preencha com a config do seu projeto Firebase. No console:
 

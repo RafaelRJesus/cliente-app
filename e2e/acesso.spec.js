@@ -41,7 +41,7 @@ test.describe('sem login', () => {
   })
 
   test('senha errada não entra', async ({ page }) => {
-    await entrar(page, 'admin@rjbank.test', 'errada')
+    await entrar(page, 'admin@respawn.test', 'errada')
     await expect(page.getByText('E-mail ou senha incorretos.')).toBeVisible()
   })
 
@@ -55,7 +55,7 @@ test.describe('sem login', () => {
   })
 
   test('admin entra e vê o menu completo', async ({ page }) => {
-    await entrar(page, 'admin@rjbank.test', 'admin123')
+    await entrar(page, 'admin@respawn.test', 'admin123')
     await expect(page.getByRole('heading', { name: 'Visão geral' })).toBeVisible()
     await expect(menu(page).getByRole('link', { name: 'Gestores' })).toBeVisible()
   })
@@ -94,7 +94,7 @@ test('gestor removido perde o acesso', async ({ page }) => {
   await page.getByRole('button', { name: 'Ativar acesso' }).click()
   await sair(page)
 
-  await entrar(page, 'admin@rjbank.test', 'admin123')
+  await entrar(page, 'admin@respawn.test', 'admin123')
   await page.goto('/gestores')
   const item = page.locator('.list-item', { hasText: 'beto@exemplo.com' })
   await item.getByRole('button', { name: 'Remover' }).click()

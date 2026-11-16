@@ -5,7 +5,7 @@ import { db } from './firebase'
 // O cliente e o contador são gravados na mesma transação; as regras do
 // Firestore conferem que o número é exatamente o próximo.
 
-const CONTADOR = 'rjbank:contador-clientes'
+const CONTADOR = 'respawn:contador-clientes'
 
 export const formatarNumeroCliente = (numero) =>
   numero ? String(numero).padStart(7, '0') : '—'

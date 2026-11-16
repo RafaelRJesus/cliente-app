@@ -94,10 +94,10 @@ function firebaseAuth() {
 
 // ---- modo local -------------------------------------------------------------
 
-export const ADMIN_LOCAL = { email: 'admin@rjbank.test', senha: 'admin123' }
+export const ADMIN_LOCAL = { email: 'admin@respawn.test', senha: 'admin123' }
 
-const CONTAS = 'rjbank:contas'
-const SESSAO = 'rjbank:sessao'
+const CONTAS = 'respawn:contas'
+const SESSAO = 'respawn:sessao'
 const ler = (k, padrao) => JSON.parse(localStorage.getItem(k) ?? JSON.stringify(padrao))
 const gravar = (k, v) => localStorage.setItem(k, JSON.stringify(v))
 
@@ -115,8 +115,8 @@ function localAuth() {
   // Admin de exemplo: só existe no modo local, para dar para testar sem Firebase.
   if (!ler(CONTAS, []).some((c) => c.email === ADMIN_LOCAL.email)) {
     gravar(CONTAS, [...ler(CONTAS, []), { uid: 'admin-local', ...ADMIN_LOCAL }])
-    gravar('rjbank:usuarios', {
-      ...ler('rjbank:usuarios', {}),
+    gravar('respawn:usuarios', {
+      ...ler('respawn:usuarios', {}),
       'admin-local': { papel: 'admin', email: ADMIN_LOCAL.email, nome: 'Admin local' },
     })
   }

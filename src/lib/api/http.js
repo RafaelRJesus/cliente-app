@@ -12,7 +12,7 @@ export async function getJson(url, { timeout = 10_000 } = {}) {
 
 // Cache simples em localStorage com validade em horas.
 export async function cached(key, hours, loader) {
-  const storageKey = `rjbank:cache:${key}`
+  const storageKey = `respawn:cache:${key}`
   try {
     const hit = JSON.parse(localStorage.getItem(storageKey))
     if (hit && Date.now() - hit.at < hours * 3_600_000) return hit.data

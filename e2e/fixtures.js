@@ -18,7 +18,7 @@ export const test = base.extend({
     if (sessao) {
       await page.addInitScript((uid) => {
         if (!sessionStorage.getItem('e2e-sessao')) {
-          localStorage.setItem('rjbank:sessao', uid)
+          localStorage.setItem('respawn:sessao', uid)
           sessionStorage.setItem('e2e-sessao', '1')
         }
       }, sessao)

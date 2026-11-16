@@ -31,7 +31,7 @@ test('admin vê os usuários e bloqueia e desbloqueia um cliente', async ({ page
   await expect(page.getByRole('heading', { name: 'Meus contratos' })).toBeVisible()
   await sair(page)
 
-  await entrar(page, 'admin@rjbank.test', 'admin123')
+  await entrar(page, 'admin@respawn.test', 'admin123')
   await page.getByRole('navigation').getByRole('link', { name: 'Usuários' }).click()
   await page.getByRole('button', { name: /^Clientes/ }).click()
   const linha = page.locator('tr', { hasText: 'ana@exemplo.com' })
@@ -41,7 +41,7 @@ test('admin vê os usuários e bloqueia e desbloqueia um cliente', async ({ page
   await page.getByRole('button', { name: /^Todos/ }).click()
   await expect(
     page
-      .locator('tr', { hasText: 'admin@rjbank.test' })
+      .locator('tr', { hasText: 'admin@respawn.test' })
       .getByRole('button', { name: 'Bloquear' }),
   ).toHaveCount(0)
 
@@ -54,7 +54,7 @@ test('admin vê os usuários e bloqueia e desbloqueia um cliente', async ({ page
   await expect(page.getByText('Seu acesso está bloqueado')).toBeVisible()
   await page.getByRole('button', { name: 'Sair' }).click()
 
-  await entrar(page, 'admin@rjbank.test', 'admin123')
+  await entrar(page, 'admin@respawn.test', 'admin123')
   await page.goto('/usuarios')
   await page
     .locator('tr', { hasText: 'ana@exemplo.com' })

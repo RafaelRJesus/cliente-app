@@ -124,20 +124,21 @@ function localPerfis() {
   const gravar = (k, v) => localStorage.setItem(k, JSON.stringify(v))
   const clientes = () => JSON.parse(localStorage.getItem('cliente-app:clientes') ?? '[]')
   const salvarPerfil = (uid, perfil) => {
-    gravar('rjbank:usuarios', { ...ler('rjbank:usuarios'), [uid]: perfil })
+    gravar('respawn:usuarios', { ...ler('respawn:usuarios'), [uid]: perfil })
     return { uid, ...perfil }
   }
 
   return {
     async carregar(user) {
-      const perfil = ler('rjbank:usuarios')[user.uid]
+      const perfil = ler('respawn:usuarios')[user.uid]
       if (!perfil) return null
       if (perfil.papel !== 'admin' && perfil.bloqueado) throw BLOQUEADO
-      if (perfil.papel === 'gestor' && !ler('rjbank:gestores')[user.email]) throw REVOGADO
+      if (perfil.papel === 'gestor' && !ler('respawn:gestores')[user.email])
+        throw REVOGADO
       return { uid: user.uid, ...perfil }
     },
 
-    conviteDeGestor: async (user) => ler('rjbank:gestores')[user.email] ?? null,
+    conviteDeGestor: async (user) => ler('respawn:gestores')[user.email] ?? null,
 
     ativarGestor: async (user, nome) =>
       salvarPerfil(user.uid, {
@@ -178,27 +179,27 @@ function localPerfis() {
     },
 
     listarGestores: async () =>
-      Object.entries(ler('rjbank:gestores')).map(([email, g]) => ({ email, ...g })),
+      Object.entries(ler('respawn:gestores')).map(([email, g]) => ({ email, ...g })),
 
     async convidarGestor(email, nome) {
-      gravar('rjbank:gestores', {
-        ...ler('rjbank:gestores'),
+      gravar('respawn:gestores', {
+        ...ler('respawn:gestores'),
         [email.trim().toLowerCase()]: { nome, criadoEm: agora() },
       })
     },
 
     listarUsuarios: async () =>
-      Object.entries(ler('rjbank:usuarios')).map(([uid, p]) => ({ uid, ...p })),
+      Object.entries(ler('respawn:usuarios')).map(([uid, p]) => ({ uid, ...p })),
 
     async definirBloqueio(uid, bloqueado) {
-      const usuarios = ler('rjbank:usuarios')
-      gravar('rjbank:usuarios', { ...usuarios, [uid]: { ...usuarios[uid], bloqueado } })
+      const usuarios = ler('respawn:usuarios')
+      gravar('respawn:usuarios', { ...usuarios, [uid]: { ...usuarios[uid], bloqueado } })
     },
 
     async removerGestor(email) {
-      const gestores = ler('rjbank:gestores')
+      const gestores = ler('respawn:gestores')
       delete gestores[email]
-      gravar('rjbank:gestores', gestores)
+      gravar('respawn:gestores', gestores)
     },
   }
 }

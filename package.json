@@ -12,7 +12,7 @@
     "test:watch": "vitest",
     "format": "prettier --write src",
     "test:e2e": "playwright test",
-    "test:regras": "npx -y firebase-tools@latest emulators:exec --only firestore --project demo-rjbank \"vitest run -c vitest.regras.config.js\"",
+    "test:regras": "npx -y firebase-tools@latest emulators:exec --only firestore --project demo-respawn \"vitest run -c vitest.regras.config.js\"",
     "docs:api": "npx -y @redocly/cli@2.78.0 lint public/api-docs/openapi.yaml"
   },
   "dependencies": {

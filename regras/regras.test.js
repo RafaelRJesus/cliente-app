@@ -75,7 +75,8 @@ const conta = (uid, email, verificado = true, provedor = 'password') =>
     })
     .firestore()
 
-const admin = (provedor = 'google.com') => conta('admin', 'admin@rj.test', true, provedor)
+const admin = (provedor = 'google.com') =>
+  conta('admin', 'admin@respawn.test', true, provedor)
 
 // Grava o cliente com o próximo número e avança o contador, como o app faz.
 function cadastrar(db, caminho, dados, numero = 3) {
@@ -118,33 +119,36 @@ async function semear() {
     await setDoc(doc(db, 'contadores/clientes'), { ultimo: 2 })
     await setDoc(doc(db, 'usuarios/admin'), {
       papel: 'admin',
-      email: 'admin@rj.test',
+      email: 'admin@respawn.test',
       nome: 'Admin',
       criadoEm: agora,
     })
     await setDoc(doc(db, 'usuarios/gestor'), {
       papel: 'gestor',
-      email: 'gestor@rj.test',
+      email: 'gestor@respawn.test',
       nome: 'Gestor',
       criadoEm: agora,
     })
-    await setDoc(doc(db, 'gestores/gestor@rj.test'), { nome: 'Gestor', criadoEm: agora })
+    await setDoc(doc(db, 'gestores/gestor@respawn.test'), {
+      nome: 'Gestor',
+      criadoEm: agora,
+    })
     await setDoc(
       doc(db, `clientes/${CPF_MARIA}`),
-      cliente('maria@rj.test', CPF_MARIA, { criadoPor: 'gestor', numero: 1 }),
+      cliente('maria@respawn.test', CPF_MARIA, { criadoPor: 'gestor', numero: 1 }),
     )
     await setDoc(
       doc(db, `clientes/${CPF_JOAO}`),
-      cliente('joao@rj.test', CPF_JOAO, { criadoPor: 'gestor', numero: 2 }),
+      cliente('joao@respawn.test', CPF_JOAO, { criadoPor: 'gestor', numero: 2 }),
     )
     // cadastro antigo, de antes do número do cliente
     await setDoc(
       doc(db, `clientes/${CPF_ANTIGO}`),
-      cliente('antigo@rj.test', CPF_ANTIGO, { criadoPor: 'gestor' }),
+      cliente('antigo@respawn.test', CPF_ANTIGO, { criadoPor: 'gestor' }),
     )
     await setDoc(doc(db, 'usuarios/maria'), {
       papel: 'cliente',
-      email: 'maria@rj.test',
+      email: 'maria@respawn.test',
       nome: 'Maria',
       clienteId: CPF_MARIA,
       criadoEm: agora,
@@ -156,7 +160,7 @@ async function semear() {
 
 beforeAll(async () => {
   env = await initializeTestEnvironment({
-    projectId: 'demo-rjbank',
+    projectId: 'demo-respawn',
     firestore: { rules: readFileSync('firestore.rules', 'utf8') },
   })
 })
@@ -173,7 +177,7 @@ describe('sem login', () => {
     const db = env.unauthenticatedContext().firestore()
     await assertFails(getDocs(collection(db, 'clientes')))
     await assertFails(getDoc(doc(db, 'contratos/da-maria')))
-    await assertFails(cadastrar(db, `clientes/${CPF_MARIA}`, cliente('x@rj.test')))
+    await assertFails(cadastrar(db, `clientes/${CPF_MARIA}`, cliente('x@respawn.test')))
   })
 })
 
@@ -181,17 +185,17 @@ describe('admin', () => {
   it('cadastra e remove gestor', async () => {
     const db = admin()
     await assertSucceeds(
-      setDoc(doc(db, 'gestores/novo@rj.test'), { nome: 'Novo', criadoEm: agora }),
+      setDoc(doc(db, 'gestores/novo@respawn.test'), { nome: 'Novo', criadoEm: agora }),
     )
     await assertSucceeds(getDocs(collection(db, 'gestores')))
-    await assertSucceeds(deleteDoc(doc(db, 'gestores/novo@rj.test')))
+    await assertSucceeds(deleteDoc(doc(db, 'gestores/novo@respawn.test')))
   })
 
   it('com senha não tem poder de admin, só com Google', async () => {
     const db = admin('password')
     await assertFails(getDocs(collection(db, 'clientes')))
     await assertFails(
-      setDoc(doc(db, 'gestores/novo@rj.test'), { nome: 'Novo', criadoEm: agora }),
+      setDoc(doc(db, 'gestores/novo@respawn.test'), { nome: 'Novo', criadoEm: agora }),
     )
   })
 
@@ -203,11 +207,14 @@ describe('admin', () => {
 })
 
 describe('gestor', () => {
-  const db = () => conta('gestor', 'gestor@rj.test')
+  const db = () => conta('gestor', 'gestor@respawn.test')
 
   it('não cadastra outro gestor', async () => {
     await assertFails(
-      setDoc(doc(db(), 'gestores/amigo@rj.test'), { nome: 'Amigo', criadoEm: agora }),
+      setDoc(doc(db(), 'gestores/amigo@respawn.test'), {
+        nome: 'Amigo',
+        criadoEm: agora,
+      }),
     )
   })
 
@@ -222,7 +229,7 @@ describe('gestor', () => {
       cadastrar(
         db(),
         `clientes/${cpf}`,
-        cliente('ana@rj.test', cpf, { criadoPor: 'gestor' }),
+        cliente('ana@respawn.test', cpf, { criadoPor: 'gestor' }),
       ),
     )
   })
@@ -232,7 +239,7 @@ describe('gestor', () => {
       cadastrar(
         db(),
         'clientes/39053344705',
-        cliente('ana@rj.test', CPF_JOAO, { criadoPor: 'gestor' }),
+        cliente('ana@respawn.test', CPF_JOAO, { criadoPor: 'gestor' }),
       ),
     )
   })
@@ -242,7 +249,7 @@ describe('gestor', () => {
       cadastrar(
         db(),
         `clientes/${CPF_MARIA}`,
-        cliente('outro@rj.test', CPF_MARIA, { criadoPor: 'gestor' }),
+        cliente('outro@respawn.test', CPF_MARIA, { criadoPor: 'gestor' }),
       ),
     )
   })
@@ -276,7 +283,7 @@ describe('gestor', () => {
   })
 
   it('perde o acesso quando o admin remove o convite', async () => {
-    await deleteDoc(doc(admin(), 'gestores/gestor@rj.test'))
+    await deleteDoc(doc(admin(), 'gestores/gestor@respawn.test'))
     await assertFails(getDocs(collection(db(), 'clientes')))
     await assertFails(getDoc(doc(db(), 'contratos/do-joao')))
   })
@@ -287,7 +294,7 @@ describe('gestor', () => {
 })
 
 describe('cliente', () => {
-  const maria = () => conta('maria', 'maria@rj.test')
+  const maria = () => conta('maria', 'maria@respawn.test')
 
   it('lê o próprio cadastro e só os próprios contratos', async () => {
     await assertSucceeds(getDoc(doc(maria(), `clientes/${CPF_MARIA}`)))
@@ -336,8 +343,8 @@ describe('cliente', () => {
 })
 
 describe('número do cliente', () => {
-  const gestor = () => conta('gestor', 'gestor@rj.test')
-  const nova = (cpf) => cliente('nova@rj.test', cpf, { criadoPor: 'gestor' })
+  const gestor = () => conta('gestor', 'gestor@respawn.test')
+  const nova = (cpf) => cliente('nova@respawn.test', cpf, { criadoPor: 'gestor' })
 
   it('é o próximo do contador', async () => {
     await assertSucceeds(
@@ -382,7 +389,7 @@ describe('número do cliente', () => {
   })
 
   it('cliente não numera o próprio cadastro', async () => {
-    const maria = conta('maria', 'maria@rj.test')
+    const maria = conta('maria', 'maria@respawn.test')
     const lote = writeBatch(maria)
     lote.update(doc(maria, 'contadores/clientes'), { ultimo: 3 })
     lote.update(doc(maria, `clientes/${CPF_MARIA}`), { numero: 3 })
@@ -391,7 +398,7 @@ describe('número do cliente', () => {
 })
 
 describe('número do contrato', () => {
-  const gestor = () => conta('gestor', 'gestor@rj.test')
+  const gestor = () => conta('gestor', 'gestor@respawn.test')
 
   it('PPP + número do cliente + sequência, e a sequência continua', async () => {
     await assertSucceeds(contratar(gestor(), CPF_JOAO, 2, 1))
@@ -432,7 +439,7 @@ describe('número do contrato', () => {
 
   it('cliente não mexe no contador de contratos', async () => {
     await assertFails(
-      updateDoc(doc(conta('maria', 'maria@rj.test'), `clientes/${CPF_MARIA}`), {
+      updateDoc(doc(conta('maria', 'maria@respawn.test'), `clientes/${CPF_MARIA}`), {
         ultimoContrato: 1,
       }),
     )
@@ -458,7 +465,7 @@ describe('bloqueio de usuários', () => {
 
   it('gestor não bloqueia ninguém', async () => {
     await assertFails(
-      updateDoc(doc(conta('gestor', 'gestor@rj.test'), 'usuarios/maria'), {
+      updateDoc(doc(conta('gestor', 'gestor@respawn.test'), 'usuarios/maria'), {
         bloqueado: true,
       }),
     )
@@ -466,14 +473,16 @@ describe('bloqueio de usuários', () => {
 
   it('cliente bloqueado não vê os próprios contratos', async () => {
     await updateDoc(doc(admin(), 'usuarios/maria'), { bloqueado: true })
-    const maria = conta('maria', 'maria@rj.test')
+    const maria = conta('maria', 'maria@respawn.test')
     await assertFails(getDoc(doc(maria, 'contratos/da-maria')))
     await assertFails(getDoc(doc(maria, `clientes/${CPF_MARIA}`)))
   })
 
   it('gestor bloqueado perde a carteira', async () => {
     await updateDoc(doc(admin(), 'usuarios/gestor'), { bloqueado: true })
-    await assertFails(getDocs(collection(conta('gestor', 'gestor@rj.test'), 'clientes')))
+    await assertFails(
+      getDocs(collection(conta('gestor', 'gestor@respawn.test'), 'clientes')),
+    )
   })
 })
 
@@ -487,33 +496,36 @@ describe('criação de conta', () => {
   })
 
   it('cliente pré-cadastrado se vincula com CPF e e-mail iguais', async () => {
-    const db = conta('joao', 'joao@rj.test')
+    const db = conta('joao', 'joao@respawn.test')
     await assertSucceeds(
-      setDoc(doc(db, 'usuarios/joao'), perfilCliente('joao@rj.test', CPF_JOAO)),
+      setDoc(doc(db, 'usuarios/joao'), perfilCliente('joao@respawn.test', CPF_JOAO)),
     )
     await assertSucceeds(getDoc(doc(db, 'contratos/do-joao')))
   })
 
   it('não se vincula ao CPF de outra pessoa', async () => {
-    const db = conta('intruso', 'intruso@rj.test')
+    const db = conta('intruso', 'intruso@respawn.test')
     await assertFails(
-      setDoc(doc(db, 'usuarios/intruso'), perfilCliente('intruso@rj.test', CPF_JOAO)),
+      setDoc(
+        doc(db, 'usuarios/intruso'),
+        perfilCliente('intruso@respawn.test', CPF_JOAO),
+      ),
     )
   })
 
   it('não se vincula sem e-mail confirmado', async () => {
-    const db = conta('joao', 'joao@rj.test', false)
+    const db = conta('joao', 'joao@respawn.test', false)
     await assertFails(
-      setDoc(doc(db, 'usuarios/joao'), perfilCliente('joao@rj.test', CPF_JOAO)),
+      setDoc(doc(db, 'usuarios/joao'), perfilCliente('joao@respawn.test', CPF_JOAO)),
     )
   })
 
   it('não se declara admin', async () => {
-    const db = conta('esperto', 'esperto@rj.test')
+    const db = conta('esperto', 'esperto@respawn.test')
     await assertFails(
       setDoc(doc(db, 'usuarios/esperto'), {
         papel: 'admin',
-        email: 'esperto@rj.test',
+        email: 'esperto@respawn.test',
         nome: 'X',
         criadoEm: agora,
       }),
@@ -521,11 +533,11 @@ describe('criação de conta', () => {
   })
 
   it('não vira gestor sem convite', async () => {
-    const db = conta('esperto', 'esperto@rj.test')
+    const db = conta('esperto', 'esperto@respawn.test')
     await assertFails(
       setDoc(doc(db, 'usuarios/esperto'), {
         papel: 'gestor',
-        email: 'esperto@rj.test',
+        email: 'esperto@respawn.test',
         nome: 'X',
         criadoEm: agora,
       }),
@@ -534,16 +546,16 @@ describe('criação de conta', () => {
 
   it('gestor convidado ativa a conta', async () => {
     await env.withSecurityRulesDisabled((ctx) =>
-      setDoc(doc(ctx.firestore(), 'gestores/novo@rj.test'), {
+      setDoc(doc(ctx.firestore(), 'gestores/novo@respawn.test'), {
         nome: 'Novo',
         criadoEm: agora,
       }),
     )
-    const db = conta('novo', 'novo@rj.test')
+    const db = conta('novo', 'novo@respawn.test')
     await assertSucceeds(
       setDoc(doc(db, 'usuarios/novo'), {
         papel: 'gestor',
-        email: 'novo@rj.test',
+        email: 'novo@respawn.test',
         nome: 'Novo',
         criadoEm: agora,
       }),
@@ -552,22 +564,26 @@ describe('criação de conta', () => {
 
   it('cliente novo se cadastra com o próprio e-mail e depois cria o perfil', async () => {
     const cpf = '39053344705'
-    const db = conta('ana', 'ana@rj.test')
+    const db = conta('ana', 'ana@respawn.test')
     await assertSucceeds(
-      cadastrar(db, `clientes/${cpf}`, cliente('ana@rj.test', cpf, { criadoPor: 'ana' })),
+      cadastrar(
+        db,
+        `clientes/${cpf}`,
+        cliente('ana@respawn.test', cpf, { criadoPor: 'ana' }),
+      ),
     )
     await assertSucceeds(
-      setDoc(doc(db, 'usuarios/ana'), perfilCliente('ana@rj.test', cpf)),
+      setDoc(doc(db, 'usuarios/ana'), perfilCliente('ana@respawn.test', cpf)),
     )
   })
 
   it('cliente novo não cadastra outra pessoa', async () => {
-    const db = conta('ana', 'ana@rj.test')
+    const db = conta('ana', 'ana@respawn.test')
     await assertFails(
       cadastrar(
         db,
         'clientes/39053344705',
-        cliente('outra@rj.test', '39053344705', { criadoPor: 'ana' }),
+        cliente('outra@respawn.test', '39053344705', { criadoPor: 'ana' }),
       ),
     )
   })
@@ -575,8 +591,8 @@ describe('criação de conta', () => {
   it('cliente já vinculado não cria outro cadastro', async () => {
     await assertFails(
       setDoc(
-        doc(conta('maria', 'maria@rj.test'), 'clientes/39053344705'),
-        cliente('maria@rj.test', '39053344705', { criadoPor: 'maria' }),
+        doc(conta('maria', 'maria@respawn.test'), 'clientes/39053344705'),
+        cliente('maria@respawn.test', '39053344705', { criadoPor: 'maria' }),
       ),
     )
   })

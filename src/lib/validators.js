@@ -1,5 +1,5 @@
-import { onlyDigits } from './format'
-import { LIMITES_CLIENTE } from './limites'
+import { onlyDigits } from './format.js'
+import { LIMITES_CLIENTE } from './limites.js'
 
 export const EMAIL_REGEX = /^[^\s@]+@[^\s@]+\.[^\s@]+$/
 

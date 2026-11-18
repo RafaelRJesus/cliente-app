@@ -1,4 +1,4 @@
-import { saldoDevedor, situacaoContrato } from './credito'
+import { saldoDevedor, situacaoContrato } from './credito.js'
 
 const soma = (lista, fn) =>
   Math.round(lista.reduce((acc, x) => acc + fn(x), 0) * 100) / 100

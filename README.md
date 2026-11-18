@@ -101,8 +101,58 @@ O deploy se protege sozinho (`firebase.json`):
   repositório da automação ao lado deste, em `../rj-bank-qa-automation`; na
   primeira vez instala as dependências sozinho.
 
-E a cada push no GitHub, o CI roda lint, unitários, as regras no emulador, os
-testes de tela deste repositório e as suítes de interface da automação de QA.
+E a cada push no GitHub, o CI roda lint, unitários, os testes da API de massa
+(em memória e no emulador), as regras no emulador, os testes de tela deste repositório e as suítes de interface da automação de QA.
+
+## API de massa (para QA)
+
+Para quem testa o Respawn de fora, como a Central de Massa, existe uma API que gera dados de teste
+prontos: clientes, contratos de qualquer produto já **em dia, em atraso ou quitados**, pagamento de
+parcelas e limpeza de tudo depois. O código fica em `functions/` e roda na **Vercel** (plano Hobby,
+gratuito), falando com o Firestore pela conta de serviço do Firebase. O app continua no plano Spark.
+
+- Grava no **mesmo formato e com a mesma numeração** da tela, usando as mesmas funções de cálculo
+  de `src/lib` (Price/SAC, IOF, CET, encargos de atraso). O teste da API confere que os documentos só
+  usam os campos aceitos pelo `firestore.rules`.
+- Tudo o que uma chamada gera entra num **lote** (`massaLotes`, fechado para o app pelas regras).
+  `DELETE /api/massa/lotes/{id}` apaga a massa, mas não apaga cliente que já tem acesso ao app ou
+  contrato fora do lote.
+- Autenticação pelo cabeçalho `x-api-key`. A documentação completa está no Swagger, na seção
+  **API de massa**.
+
+| Rota | Para quê |
+| --- | --- |
+| `GET /api/massa/produtos` | produtos, sistemas, situações e formas de pagamento aceitos |
+| `POST /api/massa/simulacoes` | simular um ou vários prazos, sem gravar |
+| `POST /api/massa/clientes` | criar de 1 a 100 clientes fictícios |
+| `GET /api/massa/clientes?cpf=` | cliente (por CPF, número ou e-mail) com contratos e situação |
+| `GET /api/massa/clientes/sem-contrato` | cadastros prontos para receber contrato |
+| `POST /api/massa/contratos` | criar de 1 a 100 contratos na situação pedida |
+| `GET /api/massa/contratos` | buscar por número, CPF, produto, situação, faixa ou sortear |
+| `GET /api/massa/contratos/{numero}` | contrato completo com o cronograma |
+| `POST /api/massa/contratos/{numero}/pagamentos` | pagar parcelas (`proxima`, `vencidas`, `todas` ou números) |
+| `GET` / `DELETE /api/massa/lotes/{id}` | ver ou apagar o que um lote gerou |
+
+### Publicando na Vercel
+
+1. Na Vercel, importe este repositório com **Root Directory = `functions`** (framework: Other).
+2. Em Settings → Environment Variables, crie:
+   - `MASSA_API_KEY`: uma chave longa e aleatória (a mesma configurada na ferramenta de QA);
+   - `FIREBASE_SERVICE_ACCOUNT`: o conteúdo do `.json` gerado em Firebase → Configurações do
+     projeto → Contas de serviço → Gerar nova chave privada.
+3. Faça um novo deploy e teste: `curl https://<seu-projeto>.vercel.app/api/massa/saude`.
+
+A cada push na `main`, a Vercel publica de novo sozinha.
+
+### Rodando local
+
+```bash
+cd functions
+npm install
+GOOGLE_APPLICATION_CREDENTIALS=~/caminho/da-chave.json MASSA_API_KEY=uma-chave npm run servidor
+# http://localhost:5180/api/massa
+npm test   # testes da API com Firestore em memória
+```
 
 ## Organização
 
@@ -114,6 +164,12 @@ src/
   context/     dados compartilhados entre as telas
   components/  peças reutilizáveis (Field, tabela de parcelas, toast…)
   pages/       Visão geral, Clientes, Simulador, Contratos
+functions/
+  src/servicos/  API de massa: clientes, contratos, pagamentos, consultas, simulações e lotes
+  src/app.js     rotas HTTP (Express) e a checagem da chave
+  src/servidor.js  liga no Firestore (conta de serviço) e sobe o servidor local
+  api/massa.js   entrada da função na Vercel
+  test/          testes da API (Firestore em memória ou emulador)
 ```
 
 ## Próximos passos

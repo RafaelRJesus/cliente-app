@@ -7,8 +7,7 @@ import { db } from './firebase'
 
 const CONTADOR = 'respawn:contador-clientes'
 
-export const formatarNumeroCliente = (numero) =>
-  numero ? String(numero).padStart(7, '0') : '—'
+export { formatarNumeroCliente } from './numeracao'
 
 /** Grava um cadastro novo (id = CPF) já com o próximo número. */
 export async function gravarClienteNumerado(cpf, dados) {

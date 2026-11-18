@@ -13,6 +13,9 @@ info:
        O app usa o SDK do Firebase, que por baixo faz exatamente estas chamadas.
     3. **APIs públicas** que o app consulta: CEP (BrasilAPI e ViaCEP), tabela FIPE e taxas do
        Banco Central.
+    4. **API de massa** (Cloud Functions, `/api/massa`): para ferramentas de QA, como a Central de
+       Massa, gerarem clientes, contratos e pagamentos de teste. Usa a chave `x-api-key`, não o
+       login do app; o "Try it out" dessas rotas pede a chave pelo botão Authorize.
 
     ## Perfis de acesso
 
@@ -80,6 +83,11 @@ tags:
     description: Tabela FIPE para o crédito com garantia de veículo.
   - name: Banco Central
     description: Taxas médias de juros por modalidade (API Olinda), usadas como taxa sugerida.
+  - name: API de massa
+    description: |
+      Geração de massa de teste (Cloud Functions). Grava clientes e contratos no mesmo formato e com a
+      mesma numeração da tela, usando as mesmas contas do simulador. Tudo o que uma chamada gera entra
+      num **lote**, que pode ser consultado e apagado. Autenticação pelo cabeçalho `x-api-key`.
 
 security:
   - firebaseIdToken: []
@@ -945,6 +953,435 @@ paths:
                         TaxaJurosAoMes: { type: number, example: 1.21 }
         '400': { description: Filtro OData inválido. }
 
+
+  # ---------------------------------------------------------------- API de massa
+  /api/massa/saude:
+    servers: &massa
+      - url: https://cliente-app-1a979.web.app
+        description: API de massa (Cloud Functions pelo Hosting)
+    get:
+      tags: [API de massa]
+      operationId: massaSaude
+      summary: Ver se a API de massa está no ar
+      security: []
+      responses:
+        '200':
+          description: No ar.
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  ok: { type: boolean }
+                  servico: { type: string, example: respawn-api-massa }
+        '404': { description: A função ainda não foi publicada (o Hosting não acha a rota). }
+
+  /api/massa/produtos:
+    servers: *massa
+    get:
+      tags: [API de massa]
+      operationId: massaProdutos
+      summary: Produtos, sistemas, situações e formas de pagamento aceitos
+      security: [{ massaApiKey: [] }]
+      responses:
+        '200':
+          description: Parâmetros aceitos pela API.
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  produtos:
+                    type: array
+                    items:
+                      type: object
+                      properties:
+                        id: { type: string, example: pessoal }
+                        prefixo: { type: string, example: '101' }
+                        nome: { type: string }
+                        valorMin: { type: number }
+                        valorMax: { type: number }
+                        prazoMax: { type: integer }
+                        taxaPadrao: { type: number, description: '% ao mês' }
+                  sistemas: { type: array, items: { type: string } }
+                  situacoes: { type: array, items: { type: string } }
+                  formasPagamento: { type: array, items: { type: string } }
+        '401': { $ref: '#/components/responses/MassaNaoAutorizado' }
+
+  /api/massa/simulacoes:
+    servers: *massa
+    post:
+      tags: [API de massa]
+      operationId: massaSimular
+      summary: Simular um ou vários prazos (planos), sem gravar
+      security: [{ massaApiKey: [] }]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              allOf:
+                - $ref: '#/components/schemas/MassaParametrosContrato'
+                - type: object
+                  properties:
+                    prazos:
+                      type: array
+                      items: { type: integer }
+                      maxItems: 24
+                      description: Vários prazos lado a lado. Sem ele, usa `prazo`.
+                    cronograma: { type: boolean, description: Devolver as parcelas de cada plano. }
+            example: { produto: pessoal, valor: 10000, prazos: [6, 12, 24] }
+      responses:
+        '200':
+          description: Um plano por prazo.
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  planos:
+                    type: array
+                    items:
+                      type: object
+                      properties:
+                        produto: { type: string }
+                        prazo: { type: integer }
+                        sistema: { type: string }
+                        taxaMensal: { type: number, example: 0.05 }
+                        valorSolicitado: { type: number }
+                        valorFinanciado: { type: number }
+                        valorLiberado: { type: number }
+                        primeiraParcela: { type: number }
+                        ultimaParcela: { type: number }
+                        iof: { type: number }
+                        totalPago: { type: number }
+                        totalJuros: { type: number }
+                        cetMensal: { type: number }
+                        cetAnual: { type: number }
+                        detalhes: { $ref: '#/components/schemas/Detalhes' }
+                        parcelas: { type: array, items: { $ref: '#/components/schemas/Parcela' } }
+        '400': { $ref: '#/components/responses/MassaPedidoInvalido' }
+        '401': { $ref: '#/components/responses/MassaNaoAutorizado' }
+
+  /api/massa/clientes:
+    servers: *massa
+    post:
+      tags: [API de massa]
+      operationId: massaCriarClientes
+      summary: Criar clientes de massa (1 a 100)
+      description: |
+        CPF fictício com dígito válido, e-mail em example.com e endereço inventado na UF pedida.
+        Com `dados` (só com quantidade 1) dá para fixar nome, CPF, e-mail etc.
+      security: [{ massaApiKey: [] }]
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                quantidade: { type: integer, minimum: 1, maximum: 100, default: 1 }
+                uf: { type: string, enum: [RS, SP, RJ, MG, PR, SC, BA, PE, CE, AM, DF, GO], default: RS }
+                dados: { $ref: '#/components/schemas/Cliente' }
+                loteId: { $ref: '#/components/schemas/MassaLoteId' }
+                descricao: { type: string, description: Descrição do lote (quando o lote é novo). }
+            example: { quantidade: 5, uf: SP, descricao: regressão da sprint }
+      responses:
+        '201':
+          description: Clientes criados.
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  loteId: { type: string }
+                  quantidade: { type: integer }
+                  clientes:
+                    type: array
+                    items:
+                      allOf:
+                        - { $ref: '#/components/schemas/Cliente' }
+                        - type: object
+                          properties:
+                            id: { type: string, description: CPF só com números. }
+        '400': { $ref: '#/components/responses/MassaPedidoInvalido' }
+        '401': { $ref: '#/components/responses/MassaNaoAutorizado' }
+        '409': { $ref: '#/components/responses/MassaConflito' }
+    get:
+      tags: [API de massa]
+      operationId: massaConsultarCliente
+      summary: Consultar cliente por CPF, número ou e-mail (com contratos e situação)
+      security: [{ massaApiKey: [] }]
+      parameters:
+        - { name: cpf, in: query, schema: { type: string }, example: '529.982.247-25' }
+        - { name: numero, in: query, schema: { type: integer }, example: 25 }
+        - { name: email, in: query, schema: { type: string } }
+      responses:
+        '200':
+          description: Cliente encontrado.
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  cliente: { $ref: '#/components/schemas/Cliente' }
+                  situacao: { type: string, enum: [sem contrato, em dia, em atraso, quitado] }
+                  totais: { type: object }
+                  contratos: { type: array, items: { $ref: '#/components/schemas/MassaResumoContrato' } }
+        '400': { $ref: '#/components/responses/MassaPedidoInvalido' }
+        '401': { $ref: '#/components/responses/MassaNaoAutorizado' }
+        '404': { $ref: '#/components/responses/MassaNaoEncontrado' }
+
+  /api/massa/clientes/sem-contrato:
+    servers: *massa
+    get:
+      tags: [API de massa]
+      operationId: massaClientesSemContrato
+      summary: Clientes numerados que ainda não têm contrato
+      security: [{ massaApiKey: [] }]
+      parameters:
+        - $ref: '#/components/parameters/massaLimite'
+        - $ref: '#/components/parameters/massaAleatorio'
+      responses:
+        '200':
+          description: Lista de clientes.
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  clientes: { type: array, items: { $ref: '#/components/schemas/Cliente' } }
+        '401': { $ref: '#/components/responses/MassaNaoAutorizado' }
+
+  /api/massa/contratos:
+    servers: *massa
+    post:
+      tags: [API de massa]
+      operationId: massaCriarContratos
+      summary: Criar contratos de massa (1 a 100), já na situação desejada
+      description: |
+        Sem `cpf`, cada contrato ganha um cliente novo (que entra no mesmo lote). Com `cpf`, todos vão para
+        esse cliente, com a sequência dele. `situacao` (ou `parcelasPagas`/`parcelasVencidas`) recua a data de
+        contratação para o contrato já nascer em atraso, com parcelas pagas ou quitado.
+      security: [{ massaApiKey: [] }]
+      requestBody:
+        content:
+          application/json:
+            schema:
+              allOf:
+                - $ref: '#/components/schemas/MassaParametrosContrato'
+                - type: object
+                  properties:
+                    quantidade: { type: integer, minimum: 1, maximum: 100, default: 1 }
+                    cpf: { type: string, description: Cliente que recebe os contratos. }
+                    uf: { type: string, default: RS, description: UF dos clientes novos. }
+                    situacao: { type: string, enum: [em dia, em atraso, quitado] }
+                    parcelasPagas: { type: integer, minimum: 0 }
+                    parcelasVencidas: { type: integer, minimum: 0 }
+                    formaPagamento: { type: string, enum: [pix, credito, debito, boleto, dinheiro], default: pix }
+                    loteId: { $ref: '#/components/schemas/MassaLoteId' }
+                    descricao: { type: string }
+            examples:
+              emAtraso:
+                summary: 10 contratos de Pix parcelado com 2 parcelas vencidas
+                value: { quantidade: 10, produto: pix, situacao: em atraso, parcelasVencidas: 2 }
+              mesmoCliente:
+                summary: 3 consignados para o mesmo cliente
+                value: { cpf: '529.982.247-25', quantidade: 3, produto: consignado, convenio: inss }
+      responses:
+        '201':
+          description: Contratos criados.
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  loteId: { type: string }
+                  quantidade: { type: integer }
+                  contratos: { type: array, items: { $ref: '#/components/schemas/MassaResumoContrato' } }
+        '400': { $ref: '#/components/responses/MassaPedidoInvalido' }
+        '401': { $ref: '#/components/responses/MassaNaoAutorizado' }
+        '404': { $ref: '#/components/responses/MassaNaoEncontrado' }
+    get:
+      tags: [API de massa]
+      operationId: massaBuscarContratos
+      summary: Buscar contratos por número, CPF, produto, situação ou faixa
+      security: [{ massaApiKey: [] }]
+      parameters:
+        - { name: numero, in: query, schema: { type: string }, example: '1010000025001' }
+        - { name: cpf, in: query, schema: { type: string } }
+        - { name: produto, in: query, schema: { type: string, enum: [pessoal, consignado, veiculo, imovel, pix] } }
+        - { name: situacao, in: query, schema: { type: string, enum: [em dia, em atraso, quitado] } }
+        - { name: de, in: query, description: Número de contrato inicial da faixa., schema: { type: string } }
+        - { name: ate, in: query, description: Número de contrato final da faixa., schema: { type: string } }
+        - $ref: '#/components/parameters/massaLimite'
+        - $ref: '#/components/parameters/massaAleatorio'
+      responses:
+        '200':
+          description: Contratos encontrados.
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  contratos: { type: array, items: { $ref: '#/components/schemas/MassaResumoContrato' } }
+        '400': { $ref: '#/components/responses/MassaPedidoInvalido' }
+        '401': { $ref: '#/components/responses/MassaNaoAutorizado' }
+
+  /api/massa/contratos/{numero}:
+    servers: *massa
+    get:
+      tags: [API de massa]
+      operationId: massaObterContrato
+      summary: Contrato completo, com o cronograma
+      security: [{ massaApiKey: [] }]
+      parameters:
+        - $ref: '#/components/parameters/massaNumeroContrato'
+      responses:
+        '200':
+          description: Contrato.
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - { $ref: '#/components/schemas/Contrato' }
+                  - type: object
+                    properties:
+                      id: { type: string }
+                      situacao: { type: string }
+        '401': { $ref: '#/components/responses/MassaNaoAutorizado' }
+        '404': { $ref: '#/components/responses/MassaNaoEncontrado' }
+
+  /api/massa/contratos/{numero}/pagamentos:
+    servers: *massa
+    post:
+      tags: [API de massa]
+      operationId: massaPagarParcelas
+      summary: Pagar parcelas (com multa e juros de mora se estiver atrasado)
+      security: [{ massaApiKey: [] }]
+      parameters:
+        - $ref: '#/components/parameters/massaNumeroContrato'
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                parcelas:
+                  description: Números das parcelas, ou `proxima`, `vencidas` ou `todas`.
+                  oneOf:
+                    - { type: array, items: { type: integer } }
+                    - { type: string, enum: [proxima, vencidas, todas] }
+                  default: proxima
+                dataPagamento: { type: string, format: date, description: Padrão é hoje. }
+                formaPagamento: { type: string, enum: [pix, credito, debito, boleto, dinheiro], default: pix }
+            example: { parcelas: vencidas, formaPagamento: boleto }
+      responses:
+        '200':
+          description: Parcelas pagas.
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  contrato: { $ref: '#/components/schemas/MassaResumoContrato' }
+                  dataPagamento: { type: string, format: date }
+                  formaPagamento: { type: string }
+                  totalPago: { type: number }
+                  pagamentos:
+                    type: array
+                    items:
+                      type: object
+                      properties:
+                        parcela: { type: integer }
+                        vencimento: { type: string, format: date }
+                        dias: { type: integer, description: Dias de atraso. }
+                        multa: { type: number }
+                        juros: { type: number }
+                        total: { type: number }
+        '400': { $ref: '#/components/responses/MassaPedidoInvalido' }
+        '401': { $ref: '#/components/responses/MassaNaoAutorizado' }
+        '404': { $ref: '#/components/responses/MassaNaoEncontrado' }
+        '409': { $ref: '#/components/responses/MassaConflito' }
+
+  /api/massa/lotes:
+    servers: *massa
+    get:
+      tags: [API de massa]
+      operationId: massaListarLotes
+      summary: Lotes de massa gerados
+      security: [{ massaApiKey: [] }]
+      responses:
+        '200':
+          description: Lotes, do mais novo para o mais antigo.
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  lotes:
+                    type: array
+                    items:
+                      type: object
+                      properties:
+                        id: { type: string }
+                        descricao: { type: string }
+                        criadoEm: { type: string, format: date-time }
+                        atualizadoEm: { type: string, format: date-time }
+                        clientes: { type: integer }
+                        contratos: { type: integer }
+        '401': { $ref: '#/components/responses/MassaNaoAutorizado' }
+
+  /api/massa/lotes/{id}:
+    servers: *massa
+    parameters:
+      - { name: id, in: path, required: true, schema: { type: string } }
+    get:
+      tags: [API de massa]
+      operationId: massaObterLote
+      summary: O que um lote gerou (CPFs e ids dos contratos)
+      security: [{ massaApiKey: [] }]
+      responses:
+        '200':
+          description: Lote.
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  id: { type: string }
+                  descricao: { type: string }
+                  criadoEm: { type: string, format: date-time }
+                  clientes: { type: array, items: { type: string } }
+                  contratos: { type: array, items: { type: string } }
+        '401': { $ref: '#/components/responses/MassaNaoAutorizado' }
+        '404': { $ref: '#/components/responses/MassaNaoEncontrado' }
+    delete:
+      tags: [API de massa]
+      operationId: massaApagarLote
+      summary: Apagar a massa de um lote
+      description: Cliente que já tem acesso ao app ou contrato fora do lote não é apagado.
+      security: [{ massaApiKey: [] }]
+      responses:
+        '200':
+          description: Massa apagada.
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  loteId: { type: string }
+                  contratosApagados: { type: integer }
+                  clientesApagados: { type: integer }
+                  clientesMantidos:
+                    type: array
+                    items:
+                      type: object
+                      properties:
+                        cpf: { type: string }
+                        motivo: { type: string }
+        '401': { $ref: '#/components/responses/MassaNaoAutorizado' }
+        '404': { $ref: '#/components/responses/MassaNaoEncontrado' }
+
 components:
   securitySchemes:
     firebaseIdToken:
@@ -959,6 +1396,11 @@ components:
       in: query
       name: key
       description: Chave pública do app web no Firebase (a mesma do `.env.local`). Não é segredo; quem protege os dados são as regras.
+    massaApiKey:
+      type: apiKey
+      in: header
+      name: x-api-key
+      description: Chave da API de massa (segredo `MASSA_API_KEY` das Cloud Functions). Esta sim é secreta.
 
   parameters:
     cpf:
@@ -1012,6 +1454,23 @@ components:
       in: query
       schema: { type: string, const: json }
 
+    massaLimite:
+      name: limite
+      in: query
+      schema: { type: integer, minimum: 1, maximum: 100, default: 20 }
+    massaAleatorio:
+      name: aleatorio
+      in: query
+      description: Sortear em vez de ordenar.
+      schema: { type: boolean, default: false }
+    massaNumeroContrato:
+      name: numero
+      in: path
+      required: true
+      description: Número do contrato (13 dígitos, com ou sem pontos).
+      schema: { type: string }
+      example: '1010000025001'
+
   responses:
     Sessao:
       description: Conta autenticada.
@@ -1041,7 +1500,68 @@ components:
         application/json:
           schema: { $ref: '#/components/schemas/ErroFirestore' }
 
+    MassaPedidoInvalido:
+      description: Parâmetro inválido ou fora das regras do produto (`detalhes` diz o campo).
+      content:
+        application/json:
+          schema: { $ref: '#/components/schemas/MassaErro' }
+    MassaNaoAutorizado:
+      description: Sem a chave `x-api-key` ou com chave errada.
+      content:
+        application/json:
+          schema: { $ref: '#/components/schemas/MassaErro' }
+    MassaNaoEncontrado:
+      description: Cliente, contrato ou lote não encontrado.
+      content:
+        application/json:
+          schema: { $ref: '#/components/schemas/MassaErro' }
+    MassaConflito:
+      description: CPF já cadastrado ou parcela já paga.
+      content:
+        application/json:
+          schema: { $ref: '#/components/schemas/MassaErro' }
+
   schemas:
+    # ------------------------------------------------ API de massa
+    MassaErro:
+      type: object
+      required: [erro, mensagem]
+      properties:
+        erro: { type: string, example: PedidoInvalido }
+        mensagem: { type: string }
+        detalhes: { type: object, description: 'Campo → mensagem, quando houver.' }
+    MassaLoteId:
+      type: string
+      description: Lote onde registrar o que for criado. Sem ele, a chamada abre um lote novo.
+    MassaParametrosContrato:
+      type: object
+      properties:
+        produto: { type: string, enum: [pessoal, consignado, veiculo, imovel, pix], default: pessoal }
+        valor: { type: number, description: Valor pedido. Padrão por produto. }
+        prazo: { type: integer, description: Em meses. Padrão por produto. }
+        taxaMensal: { type: number, description: '% ao mês (padrão: a taxa do produto).', example: 5 }
+        sistema: { type: string, enum: [PRICE, SAC], default: PRICE }
+        dataContratacao: { type: string, format: date }
+        convenio: { type: string, enum: [inss, publico, privado], default: inss, description: Só consignado. }
+        detalhes:
+          $ref: '#/components/schemas/Detalhes'
+          description: Garantia/renda. Sem ela, a API gera valores que passam na validação do produto.
+    MassaResumoContrato:
+      type: object
+      properties:
+        id: { type: string }
+        numeroContrato: { type: string, example: '1010000025001' }
+        clienteId: { type: string }
+        clienteNome: { type: string }
+        produto: { type: string }
+        valor: { type: number }
+        prazo: { type: integer }
+        dataContratacao: { type: string, format: date }
+        situacao: { type: string, enum: [em dia, em atraso, quitado] }
+        parcelasPagas: { type: integer }
+        parcelasVencidas: { type: integer }
+        saldoDevedor: { type: number }
+
     # ------------------------------------------------ dados (como o app usa)
     Usuario:
       type: object

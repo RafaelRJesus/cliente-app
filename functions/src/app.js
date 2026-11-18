@@ -48,20 +48,16 @@ export function criarApp({ contexto, chave }) {
   rotas.use((req, res, next) => {
     const esperada = chave()
     if (!esperada) {
-      return res
-        .status(503)
-        .json({
-          erro: 'ChaveNaoConfigurada',
-          mensagem: 'A chave da API de massa não foi configurada.',
-        })
+      return res.status(503).json({
+        erro: 'ChaveNaoConfigurada',
+        mensagem: 'A chave da API de massa não foi configurada.',
+      })
     }
     if (!chaveConfere(req.get(CABECALHO_CHAVE), esperada)) {
-      return res
-        .status(401)
-        .json({
-          erro: 'NaoAutorizado',
-          mensagem: 'Envie a chave no cabeçalho x-api-key.',
-        })
+      return res.status(401).json({
+        erro: 'NaoAutorizado',
+        mensagem: 'Envie a chave no cabeçalho x-api-key.',
+      })
     }
     next()
   })
@@ -149,21 +145,17 @@ export function criarApp({ contexto, chave }) {
   // eslint-disable-next-line no-unused-vars
   app.use((err, _req, res, _next) => {
     if (err instanceof ErroApi) {
-      return res
-        .status(err.status)
-        .json({
-          erro: err.codigo,
-          mensagem: err.message,
-          ...(err.detalhes ? { detalhes: err.detalhes } : {}),
-        })
+      return res.status(err.status).json({
+        erro: err.codigo,
+        mensagem: err.message,
+        ...(err.detalhes ? { detalhes: err.detalhes } : {}),
+      })
     }
     if (err.type === 'entity.parse.failed') {
-      return res
-        .status(400)
-        .json({
-          erro: 'JsonInvalido',
-          mensagem: 'Corpo da requisição não é um JSON válido.',
-        })
+      return res.status(400).json({
+        erro: 'JsonInvalido',
+        mensagem: 'Corpo da requisição não é um JSON válido.',
+      })
     }
     console.error(err)
     res

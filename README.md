@@ -106,10 +106,10 @@ E a cada push no GitHub, o CI roda lint, unitários, os testes da API de massa
 
 ## API de massa (para QA)
 
-Para quem testa o Respawn de fora, como a Central de Massa,
-existe uma API que gera dados de teste prontos: clientes, contratos de qualquer produto já **em dia,
-em atraso ou quitados**, pagamento de parcelas e limpeza de tudo depois. Ela roda em Cloud Functions
-(`functions/`) e responde em `/api/massa/...` no próprio domínio do app.
+Para quem testa o Respawn de fora, como a Central de Massa, existe uma API que gera dados de teste
+prontos: clientes, contratos de qualquer produto já **em dia, em atraso ou quitados**, pagamento de
+parcelas e limpeza de tudo depois. O código fica em `functions/` e roda na **Vercel** (plano Hobby,
+gratuito), falando com o Firestore pela conta de serviço do Firebase. O app continua no plano Spark.
 
 - Grava no **mesmo formato e com a mesma numeração** da tela, usando as mesmas funções de cálculo
   de `src/lib` (Price/SAC, IOF, CET, encargos de atraso). O teste da API confere que os documentos só
@@ -117,8 +117,8 @@ em atraso ou quitados**, pagamento de parcelas e limpeza de tudo depois. Ela rod
 - Tudo o que uma chamada gera entra num **lote** (`massaLotes`, fechado para o app pelas regras).
   `DELETE /api/massa/lotes/{id}` apaga a massa, mas não apaga cliente que já tem acesso ao app ou
   contrato fora do lote.
-- Autenticação pelo cabeçalho `x-api-key` (segredo `MASSA_API_KEY`). A documentação completa está
-  no Swagger, na seção **API de massa**.
+- Autenticação pelo cabeçalho `x-api-key`. A documentação completa está no Swagger, na seção
+  **API de massa**.
 
 | Rota | Para quê |
 | --- | --- |
@@ -133,30 +133,25 @@ em atraso ou quitados**, pagamento de parcelas e limpeza de tudo depois. Ela rod
 | `POST /api/massa/contratos/{numero}/pagamentos` | pagar parcelas (`proxima`, `vencidas`, `todas` ou números) |
 | `GET` / `DELETE /api/massa/lotes/{id}` | ver ou apagar o que um lote gerou |
 
-```bash
-curl -X POST https://cliente-app-1a979.web.app/api/massa/contratos \
-  -H "x-api-key: $MASSA_API_KEY" -H "Content-Type: application/json" \
-  -d '{"quantidade": 5, "produto": "pix", "situacao": "em atraso", "parcelasVencidas": 2}'
-```
+### Publicando na Vercel
 
-### Publicando a API
+1. Na Vercel, importe este repositório com **Root Directory = `functions`** (framework: Other).
+2. Em Settings → Environment Variables, crie:
+   - `MASSA_API_KEY`: uma chave longa e aleatória (a mesma configurada na ferramenta de QA);
+   - `FIREBASE_SERVICE_ACCOUNT`: o conteúdo do `.json` gerado em Firebase → Configurações do
+     projeto → Contas de serviço → Gerar nova chave privada.
+3. Faça um novo deploy e teste: `curl https://<seu-projeto>.vercel.app/api/massa/saude`.
 
-As Cloud Functions pedem o plano **Blaze** (pago conforme o uso) no Firebase. O volume de massa de
-teste fica dentro da cota gratuita, mas o plano exige cartão cadastrado. A função tem no máximo 2
-instâncias, o que limita o gasto. Depois de ativar o Blaze:
+A cada push na `main`, a Vercel publica de novo sozinha.
 
-```bash
-npx firebase-tools functions:secrets:set MASSA_API_KEY   # cole uma chave longa e aleatória
-npx firebase-tools deploy --only functions,hosting
-curl https://cliente-app-1a979.web.app/api/massa/saude
-```
-
-O deploy da função roda os testes dela e o build antes. Para trocar a chave, rode o
-`secrets:set` de novo e publique a função outra vez.
+### Rodando local
 
 ```bash
-npm --prefix functions test           # testes da API com Firestore em memória
-npm --prefix functions run build      # pacote que vai para o deploy (functions/lib)
+cd functions
+npm install
+GOOGLE_APPLICATION_CREDENTIALS=~/caminho/da-chave.json MASSA_API_KEY=uma-chave npm run servidor
+# http://localhost:5180/api/massa
+npm test   # testes da API com Firestore em memória
 ```
 
 ## Organização
@@ -172,6 +167,8 @@ src/
 functions/
   src/servicos/  API de massa: clientes, contratos, pagamentos, consultas, simulações e lotes
   src/app.js     rotas HTTP (Express) e a checagem da chave
+  src/servidor.js  liga no Firestore (conta de serviço) e sobe o servidor local
+  api/massa.js   entrada da função na Vercel
   test/          testes da API (Firestore em memória ou emulador)
 ```
 

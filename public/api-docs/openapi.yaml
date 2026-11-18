@@ -13,7 +13,7 @@ info:
        O app usa o SDK do Firebase, que por baixo faz exatamente estas chamadas.
     3. **APIs públicas** que o app consulta: CEP (BrasilAPI e ViaCEP), tabela FIPE e taxas do
        Banco Central.
-    4. **API de massa** (Cloud Functions, `/api/massa`): para ferramentas de QA, como a Central de
+    4. **API de massa** (Vercel, `/api/massa`): para ferramentas de QA, como a Central de
        Massa, gerarem clientes, contratos e pagamentos de teste. Usa a chave `x-api-key`, não o
        login do app; o "Try it out" dessas rotas pede a chave pelo botão Authorize.
 
@@ -85,7 +85,7 @@ tags:
     description: Taxas médias de juros por modalidade (API Olinda), usadas como taxa sugerida.
   - name: API de massa
     description: |
-      Geração de massa de teste (Cloud Functions). Grava clientes e contratos no mesmo formato e com a
+      Geração de massa de teste (servidor na Vercel, gravando no Firestore pela conta de serviço). Grava clientes e contratos no mesmo formato e com a
       mesma numeração da tela, usando as mesmas contas do simulador. Tudo o que uma chamada gera entra
       num **lote**, que pode ser consultado e apagado. Autenticação pelo cabeçalho `x-api-key`.
 
@@ -957,8 +957,8 @@ paths:
   # ---------------------------------------------------------------- API de massa
   /api/massa/saude:
     servers: &massa
-      - url: https://cliente-app-1a979.web.app
-        description: API de massa (Cloud Functions pelo Hosting)
+      - url: https://respawn-api-massa.vercel.app
+        description: API de massa (Vercel)
     get:
       tags: [API de massa]
       operationId: massaSaude
@@ -974,7 +974,7 @@ paths:
                 properties:
                   ok: { type: boolean }
                   servico: { type: string, example: respawn-api-massa }
-        '404': { description: A função ainda não foi publicada (o Hosting não acha a rota). }
+        '404': { description: A API ainda não foi publicada. }
 
   /api/massa/produtos:
     servers: *massa
@@ -1400,7 +1400,7 @@ components:
       type: apiKey
       in: header
       name: x-api-key
-      description: Chave da API de massa (segredo `MASSA_API_KEY` das Cloud Functions). Esta sim é secreta.
+      description: Chave da API de massa (variável `MASSA_API_KEY` na Vercel). Esta sim é secreta.
 
   parameters:
     cpf:

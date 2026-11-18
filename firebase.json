@@ -16,6 +16,13 @@
     ],
     "rewrites": [
       {
+        "source": "/api/massa/**",
+        "function": {
+          "functionId": "massa",
+          "region": "southamerica-east1"
+        }
+      },
+      {
         "source": "**",
         "destination": "/index.html"
       }
@@ -44,5 +51,24 @@
   "firestore": {
     "rules": "firestore.rules",
     "indexes": "firestore.indexes.json"
-  }
+  },
+  "functions": [
+    {
+      "source": "functions",
+      "codebase": "default",
+      "ignore": [
+        "node_modules",
+        "test",
+        "src",
+        "*.config.js",
+        "build.mjs",
+        ".gitignore"
+      ],
+      "predeploy": [
+        "npm --prefix \"$RESOURCE_DIR\" ci",
+        "npm --prefix \"$RESOURCE_DIR\" test",
+        "npm --prefix \"$RESOURCE_DIR\" run build"
+      ]
+    }
+  ]
 }

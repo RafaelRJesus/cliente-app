@@ -62,7 +62,9 @@ test('contrato recebe número PPP + cliente + sequência', async ({ page }) => {
   await expect(page.locator('tbody')).toContainText('105.0000001.002')
 })
 
-test('risco Fundo Financeiro troca o 1º dígito do número e aparece no tipo', async ({ page }) => {
+test('risco Fundo Financeiro troca o 1º dígito do número e aparece no tipo', async ({
+  page,
+}) => {
   await cadastrarCliente(page, 'Ana Teste', '11144477735')
   await page.goto('/simulador')
   await page.getByRole('tab', { name: 'Pix parcelado' }).click()

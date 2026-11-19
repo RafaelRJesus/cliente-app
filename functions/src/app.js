@@ -3,6 +3,12 @@
 
 import { timingSafeEqual } from 'node:crypto'
 import express from 'express'
+import {
+  prefixoDoContrato,
+  RAZOES_ESPECIAIS,
+  RISCOS,
+  SIGLAS,
+} from '../../src/lib/catalogo.js'
 import { PREFIXOS } from '../../src/lib/numeracao.js'
 import { PRODUTOS } from '../../src/lib/produtos.js'
 import { FORMAS_PAGAMENTO } from '../../src/lib/pagamento.js'
@@ -70,9 +76,17 @@ export function criarApp({ contexto, chave }) {
     res.json({
       produtos: Object.entries(PRODUTOS).map(([id, p]) => ({
         id,
-        prefixo: PREFIXOS[id],
+        sigla: SIGLAS[id],
+        prefixo: PREFIXOS[id], // risco padrão (RSP)
+        prefixos: Object.fromEntries(
+          Object.keys(RISCOS).map((r) => [r, prefixoDoContrato(id, r)]),
+        ),
+        razoesEspeciais: Object.fromEntries(
+          Object.keys(RISCOS).map((r) => [r, RAZOES_ESPECIAIS[`${SIGLAS[id]}_${r}`]]),
+        ),
         ...p,
       })),
+      riscos: Object.entries(RISCOS).map(([id, r]) => ({ id, nome: r.nome })),
       sistemas: ['PRICE', 'SAC'],
       situacoes: SITUACOES,
       formasPagamento: FORMAS_PAGAMENTO.map((f) => f.id),

@@ -4,6 +4,7 @@
 import { situacaoContrato } from '../../../src/lib/credito.js'
 import { situacaoDoCliente, totaisDosContratos } from '../../../src/lib/carteira.js'
 import { onlyDigits } from '../../../src/lib/format.js'
+import { riscoDoContrato, RISCOS } from '../../../src/lib/catalogo.js'
 import { PREFIXOS } from '../../../src/lib/numeracao.js'
 import { naoEncontrado, pedidoInvalido } from '../erros.js'
 import { resumoContrato, SITUACOES } from './contratos.js'
@@ -95,6 +96,10 @@ export async function buscarContratos(ctx, filtros = {}) {
   if (situacao && !SITUACOES.includes(situacao)) {
     throw pedidoInvalido(`situacao deve ser uma de: ${SITUACOES.join(', ')}.`)
   }
+  const risco = filtros.risco ? String(filtros.risco).toUpperCase() : null
+  if (risco && !RISCOS[risco]) {
+    throw pedidoInvalido(`risco inválido. Use um de: ${Object.keys(RISCOS).join(', ')}.`)
+  }
 
   let consulta = ctx.db.collection('contratos')
   if (filtros.cpf) consulta = consulta.where('clienteId', '==', onlyDigits(filtros.cpf))
@@ -106,6 +111,7 @@ export async function buscarContratos(ctx, filtros = {}) {
   if (filtros.ate)
     lista = lista.filter((c) => c.numeroContrato <= onlyDigits(filtros.ate))
   if (situacao) lista = lista.filter((c) => situacaoContrato(c, hoje) === situacao)
+  if (risco) lista = lista.filter((c) => riscoDoContrato(c) === risco)
 
   const ordenada = filtros.aleatorio
     ? embaralhar(lista, ctx.aleatorio)

@@ -58,6 +58,23 @@ describe('produtos', () => {
     ])
     expect(r.body.situacoes).toEqual(['em dia', 'em atraso', 'quitado'])
   })
+
+  it('traz o catálogo: sigla, prefixos e razão especial por risco', async () => {
+    const r = await api.get('/api/massa/produtos')
+    expect(r.body.riscos.map((x) => x.id)).toEqual(['RSP', 'FFC'])
+    expect(
+      r.body.produtos.map(
+        (p) =>
+          `${p.sigla}:${p.prefixos.RSP}/${p.prefixos.FFC}:${p.razoesEspeciais.RSP}${p.razoesEspeciais.FFC}`,
+      ),
+    ).toEqual([
+      'EMP:101/201:EF',
+      'CSG:102/202:CD',
+      'CGV:103/203:GH',
+      'CGI:104/204:IJ',
+      'PXP:105/205:PQ',
+    ])
+  })
 })
 
 describe('clientes', () => {
@@ -176,6 +193,29 @@ describe('contratos', () => {
     }
   })
 
+  it('grava sigla, risco e razão especial; risco FFC troca o 1º dígito do número', async () => {
+    const padrao = (await api.post('/api/massa/contratos', { produto: 'veiculo' })).body
+      .contratos[0]
+    expect(padrao).toMatchObject({ tipo: 'CGV_RSP', risco: 'RSP', razaoEspecial: 'G' })
+    expect(padrao.numeroContrato.slice(0, 3)).toBe('103')
+
+    const r = await api.post('/api/massa/contratos', { produto: 'imovel', risco: 'ffc' })
+    expect(r.status).toBe(201)
+    const [c] = r.body.contratos
+    expect(c).toMatchObject({ tipo: 'CGI_FFC', risco: 'FFC', razaoEspecial: 'J' })
+    expect(c.numeroContrato.slice(0, 3)).toBe('204')
+    const doc = await dadosDe('contratos', c.id)
+    expect(doc).toMatchObject({ sigla: 'CGI', risco: 'FFC', razaoEspecial: 'J' })
+    expect(soCampos(doc, CAMPOS_REGRAS.contrato)).toEqual([])
+  })
+
+  it('recusa risco fora do catálogo', async () => {
+    const r = await api.post('/api/massa/contratos', { risco: 'CPR' })
+    expect(r.status).toBe(400)
+    expect(r.body).toMatchObject({ erro: 'PedidoInvalido' })
+    expect(r.body.mensagem).toMatch(/risco inválido/)
+  })
+
   it('pix financia o IOF: quem recebe fica com o valor pedido', async () => {
     const r = await api.post('/api/massa/contratos', { produto: 'pix', valor: 1000 })
     const doc = await dadosDe('contratos', r.body.contratos[0].id)
@@ -261,6 +301,20 @@ describe('contratos', () => {
       (await api.get('/api/massa/contratos?aleatorio=true&limite=1')).body.contratos,
     ).toHaveLength(1)
     expect((await api.get('/api/massa/contratos/1019999999999')).status).toBe(404)
+  })
+
+  it('busca por risco', async () => {
+    await api.post('/api/massa/contratos', { produto: 'pix' })
+    await api.post('/api/massa/contratos', {
+      produto: 'pix',
+      risco: 'FFC',
+      quantidade: 2,
+    })
+    const ffc = await api.get('/api/massa/contratos?risco=FFC')
+    expect(ffc.body.contratos.map((c) => c.tipo)).toEqual(['PXP_FFC', 'PXP_FFC'])
+    const rsp = await api.get('/api/massa/contratos?risco=rsp')
+    expect(rsp.body.contratos.map((c) => c.tipo)).toEqual(['PXP_RSP'])
+    expect((await api.get('/api/massa/contratos?risco=XYZ')).status).toBe(400)
   })
 })
 

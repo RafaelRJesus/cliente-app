@@ -16,12 +16,14 @@ import {
   lerNumero,
   today,
 } from '../lib/format'
+import { classificarContrato, RISCO_PADRAO, RISCOS } from '../lib/catalogo'
 import { PRODUTOS, referenciaBcb, validarProduto } from '../lib/produtos'
 import { isValidPlaca } from '../lib/validators'
 
 const formInicial = {
   clienteId: '',
   produto: 'pessoal',
+  risco: RISCO_PADRAO,
   convenio: 'inss',
   renda: '',
   valor: '10000',
@@ -48,6 +50,11 @@ export function Simulador() {
   const [erroContratar, setErroContratar] = useState('')
 
   const regra = PRODUTOS[form.produto]
+  // a equipe escolhe o dono do risco; a simulação do cliente é sempre Respawn
+  const classificacao = classificarContrato(
+    form.produto,
+    equipe ? form.risco : RISCO_PADRAO,
+  )
   const referencia = mercado.taxas?.[referenciaBcb(form.produto, form.convenio)]
   const taxaSugerida = referencia?.mediana ?? regra.taxaPadrao
   const taxa = taxaManual ? lerNumero(form.taxa) : taxaSugerida
@@ -128,6 +135,7 @@ export function Simulador() {
         clienteId: cliente.id,
         clienteNome: cliente.nome,
         produto: form.produto,
+        ...classificacao,
         detalhes: detalhesDoProduto(form, garantia, params),
         valor: resultado.valorFinanciado,
         taxaMensal: taxa / 100,
@@ -187,6 +195,20 @@ export function Simulador() {
                   }}
                   erro={erroContratar}
                 />
+                <Field
+                  label="Risco"
+                  name="risco"
+                  as="select"
+                  value={form.risco}
+                  onChange={handleChange}
+                  hint="Dono do risco do contrato. O padrão é Respawn."
+                >
+                  {Object.entries(RISCOS).map(([id, r]) => (
+                    <option key={id} value={id}>
+                      {r.nome} ({id})
+                    </option>
+                  ))}
+                </Field>
               </>
             ) : (
               <p className="muted small">
@@ -335,6 +357,13 @@ export function Simulador() {
               </div>
 
               <dl className="resume">
+                <div>
+                  <dt>Tipo do contrato</dt>
+                  <dd>
+                    {classificacao.sigla}_{classificacao.risco} · razão especial{' '}
+                    {classificacao.razaoEspecial}
+                  </dd>
+                </div>
                 <div>
                   <dt>Juros totais</dt>
                   <dd>{formatMoney(resultado.totalJuros)}</dd>

@@ -224,14 +224,17 @@ service cloud.firestore {
           && request.resource.data.ultimoContrato <= 999));
     }
 
-    // Número do contrato, 13 dígitos: PPP (produto) + CCCCCCC (número do
-    // cliente) + SSS (sequência do contrato daquele cliente). A sequência é o
-    // próximo do contador no cliente, que avança na mesma transação.
+    // Número do contrato, 13 dígitos: PPP + CCCCCCC (número do cliente) + SSS
+    // (sequência do contrato daquele cliente). No PPP, o 1º dígito é o risco
+    // (1 = RSP, 2 = FFC) e os dois seguintes, o produto (01 a 05). A sequência
+    // é o próximo do contador no cliente, que avança na mesma transação.
     function numeroDoContrato() {
       let caminho = /databases/$(database)/documents/clientes/$(request.resource.data.clienteId);
       let antes = get(caminho).data;
       let depois = getAfter(caminho).data;
-      let prefixo = {'pessoal': 101, 'consignado': 102, 'veiculo': 103, 'imovel': 104, 'pix': 105}[request.resource.data.produto];
+      let produtoNoNumero = {'pessoal': 1, 'consignado': 2, 'veiculo': 3, 'imovel': 4, 'pix': 5}[request.resource.data.produto];
+      let riscoNoNumero = {'RSP': 1, 'FFC': 2}[request.resource.data.risco];
+      let prefixo = riscoNoNumero * 100 + produtoNoNumero;
       return request.resource.data.sequencia is int
         && request.resource.data.sequencia == antes.get('ultimoContrato', 0) + 1
         && depois.get('ultimoContrato', 0) == request.resource.data.sequencia
@@ -242,6 +245,16 @@ service cloud.firestore {
           == prefixo * 10000000000 + antes.numero * 1000 + request.resource.data.sequencia;
     }
 
+    // Catálogo padrão: sigla do produto, risco RSP (Respawn) ou FFC (Fundo
+    // Financeiro) e uma razão especial por tipo (SIGLA_RISCO).
+    function classificacaoValida(d) {
+      let siglas = {'pessoal': 'EMP', 'consignado': 'CSG', 'veiculo': 'CGV', 'imovel': 'CGI', 'pix': 'PXP'};
+      let razoes = {'EMP_RSP': 'E', 'EMP_FFC': 'F', 'CSG_RSP': 'C', 'CSG_FFC': 'D', 'CGV_RSP': 'G', 'CGV_FFC': 'H', 'CGI_RSP': 'I', 'CGI_FFC': 'J', 'PXP_RSP': 'P', 'PXP_FFC': 'Q'};
+      return d.risco in ['RSP', 'FFC']
+        && d.sigla == siglas[d.produto]
+        && d.razaoEspecial == razoes[d.sigla + '_' + d.risco];
+    }
+
     match /contratos/{id} {
       allow read: if isEquipe() || isClienteDono(resource.data.clienteId);
       allow delete: if isEquipe();
@@ -250,11 +263,13 @@ service cloud.firestore {
         && request.resource.data.keys().hasOnly([
           'clienteId', 'clienteNome', 'produto', 'detalhes', 'valor',
           'taxaMensal', 'prazo', 'sistema', 'dataContratacao', 'iof', 'cetMensal',
-          'parcelas', 'criadoEm', 'criadoPor', 'numeroContrato', 'sequencia'])
+          'parcelas', 'criadoEm', 'criadoPor', 'numeroContrato', 'sequencia',
+          'sigla', 'risco', 'razaoEspecial'])
         && request.resource.data.criadoPor == request.auth.uid
         && exists(/databases/$(database)/documents/clientes/$(request.resource.data.clienteId))
         && numeroDoContrato()
         && request.resource.data.produto in ['pessoal', 'consignado', 'veiculo', 'imovel', 'pix']
+        && classificacaoValida(request.resource.data)
         && stringField('clienteId', 11)
         && stringField('clienteNome', 120)
         && stringField('dataContratacao', 10)

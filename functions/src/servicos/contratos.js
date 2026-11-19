@@ -2,6 +2,12 @@
 // as mesmas validações de produto e a mesma numeração do app.
 
 import { addMonths, simular, situacaoContrato } from '../../../src/lib/credito.js'
+import {
+  classificarContrato,
+  RISCO_PADRAO,
+  RISCOS,
+  tipoDoContrato,
+} from '../../../src/lib/catalogo.js'
 import { montarNumeroContrato } from '../../../src/lib/numeracao.js'
 import { PRODUTOS, validarProduto } from '../../../src/lib/produtos.js'
 import { FORMAS_PAGAMENTO } from '../../../src/lib/pagamento.js'
@@ -40,6 +46,10 @@ export function lerParametros(entrada = {}, hoje) {
     throw pedidoInvalido(
       `Produto inválido. Use um de: ${Object.keys(PRODUTOS).join(', ')}.`,
     )
+  }
+  const risco = String(entrada.risco ?? RISCO_PADRAO).toUpperCase()
+  if (!RISCOS[risco]) {
+    throw pedidoInvalido(`risco inválido. Use um de: ${Object.keys(RISCOS).join(', ')}.`)
   }
   const valor = entrada.valor ?? PADROES[produto].valor
   const prazo = entrada.prazo ?? PADROES[produto].prazo
@@ -89,6 +99,7 @@ export function lerParametros(entrada = {}, hoje) {
 
   return {
     produto,
+    risco,
     valor,
     prazo,
     taxa,
@@ -190,6 +201,7 @@ export function montarContrato(p, cliente, ctx) {
     clienteId: cliente.id,
     clienteNome: cliente.nome,
     produto: p.produto,
+    ...classificarContrato(p.produto, p.risco),
     detalhes,
     valor: resultado.valorFinanciado,
     taxaMensal: p.taxa / 100,
@@ -214,7 +226,12 @@ async function gravarNumerado(ctx, dados) {
     if (!cliente.exists) throw naoEncontrado('Cliente não encontrado.')
     const { numero, ultimoContrato = 0 } = cliente.data()
     const sequencia = ultimoContrato + 1
-    const numeroContrato = montarNumeroContrato(dados.produto, numero, sequencia)
+    const numeroContrato = montarNumeroContrato(
+      dados.produto,
+      numero,
+      sequencia,
+      dados.risco,
+    )
     tx.update(clienteRef, { ultimoContrato: sequencia })
     const gravado = { ...dados, numeroContrato, sequencia }
     tx.set(contratoRef, gravado)
@@ -238,6 +255,9 @@ export const resumoContrato = (c, hoje) => ({
   clienteId: c.clienteId,
   clienteNome: c.clienteNome,
   produto: c.produto,
+  tipo: tipoDoContrato(c),
+  risco: c.risco ?? RISCO_PADRAO,
+  razaoEspecial: c.razaoEspecial ?? null,
   valor: c.valor,
   prazo: c.prazo,
   dataContratacao: c.dataContratacao,

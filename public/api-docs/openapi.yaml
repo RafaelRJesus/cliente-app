@@ -38,10 +38,26 @@ info:
     ## Números de cadastro
 
     - **Número do cliente**: 7 dígitos, sequencial, vindo do contador `contadores/clientes`.
-    - **Número do contrato**: 13 dígitos `PPP CCCCCCC SSS`: prefixo do produto (101 pessoal,
-      102 consignado, 103 veículo, 104 imóvel, 105 Pix parcelado), número do cliente e a sequência
-      do contrato daquele cliente. Os dois só são aceitos numa transação
-      ([`documents:commit`](#/Transações/commit)) que avança o contador na mesma gravação.
+    - **Número do contrato**: 13 dígitos `PPP CCCCCCC SSS`: prefixo, número do cliente e a sequência
+      do contrato daquele cliente. No prefixo, o 1º dígito é o risco (1 = RSP Respawn, 2 = FFC Fundo
+      Financeiro) e os dois seguintes, o produto (01 pessoal, 02 consignado, 03 veículo, 04 imóvel,
+      05 Pix parcelado): 101 a 105 no risco Respawn e 201 a 205 no Fundo Financeiro. Os dois só são
+      aceitos numa transação ([`documents:commit`](#/Transações/commit)) que avança o contador na
+      mesma gravação.
+
+    ## Catálogo de contratos
+
+    Todo contrato novo grava `sigla`, `risco` e `razaoEspecial`. O tipo é `SIGLA_RISCO`:
+
+    | Produto | Sigla | RSP (prefixo / razão) | FFC (prefixo / razão) |
+    |---|---|---|---|
+    | pessoal | EMP | 101 / E | 201 / F |
+    | consignado | CSG | 102 / C | 202 / D |
+    | veiculo | CGV | 103 / G | 203 / H |
+    | imovel | CGI | 104 / I | 204 / J |
+    | pix | PXP | 105 / P | 205 / Q |
+
+    A equipe escolhe o risco no Simulador (padrão RSP). Contrato antigo, sem os campos, é RSP.
 
     ## Testando por esta página
 
@@ -584,7 +600,8 @@ paths:
         sem perfil só cadastra o próprio, com o e-mail dela já confirmado.
 
         **Contratação** (equipe): cria `contratos/{id}` com `sequencia = ultimoContrato + 1` e
-        `numeroContrato = prefixo × 10¹⁰ + numero × 10³ + sequencia`, e avança
+        `numeroContrato = prefixo × 10¹⁰ + numero × 10³ + sequencia` (prefixo = risco × 100 +
+        produto, ex.: 101 ou 204), grava `sigla`, `risco` e `razaoEspecial` do catálogo e avança
         `clientes/{cpf}.ultimoContrato`. Limites: valor de R$ 0,01 a R$ 2.100.000, taxa de 0 a 20%
         ao mês, prazo de 1 a 240 meses, sistema `PRICE` ou `SAC`.
 
@@ -997,12 +1014,28 @@ paths:
                       type: object
                       properties:
                         id: { type: string, example: pessoal }
-                        prefixo: { type: string, example: '101' }
+                        sigla: { type: string, example: EMP }
+                        prefixo: { type: string, example: '101', description: Prefixo no risco padrão (RSP). }
+                        prefixos:
+                          type: object
+                          example: { RSP: '101', FFC: '201' }
+                          additionalProperties: { type: string }
+                        razoesEspeciais:
+                          type: object
+                          example: { RSP: E, FFC: F }
+                          additionalProperties: { type: string }
                         nome: { type: string }
                         valorMin: { type: number }
                         valorMax: { type: number }
                         prazoMax: { type: integer }
                         taxaPadrao: { type: number, description: '% ao mês' }
+                  riscos:
+                    type: array
+                    items:
+                      type: object
+                      properties:
+                        id: { type: string, enum: [RSP, FFC] }
+                        nome: { type: string, example: Respawn }
                   sistemas: { type: array, items: { type: string } }
                   situacoes: { type: array, items: { type: string } }
                   formasPagamento: { type: array, items: { type: string } }
@@ -1187,6 +1220,9 @@ paths:
               mesmoCliente:
                 summary: 3 consignados para o mesmo cliente
                 value: { cpf: '529.982.247-25', quantidade: 3, produto: consignado, convenio: inss }
+              fundoFinanceiro:
+                summary: 5 contratos de garantia de imóvel no risco Fundo Financeiro (CGI_FFC)
+                value: { quantidade: 5, produto: imovel, risco: FFC }
       responses:
         '201':
           description: Contratos criados.
@@ -1211,6 +1247,7 @@ paths:
         - { name: cpf, in: query, schema: { type: string } }
         - { name: produto, in: query, schema: { type: string, enum: [pessoal, consignado, veiculo, imovel, pix] } }
         - { name: situacao, in: query, schema: { type: string, enum: [em dia, em atraso, quitado] } }
+        - { name: risco, in: query, schema: { type: string, enum: [RSP, FFC] } }
         - { name: de, in: query, description: Número de contrato inicial da faixa., schema: { type: string } }
         - { name: ate, in: query, description: Número de contrato final da faixa., schema: { type: string } }
         - $ref: '#/components/parameters/massaLimite'
@@ -1537,6 +1574,7 @@ components:
       type: object
       properties:
         produto: { type: string, enum: [pessoal, consignado, veiculo, imovel, pix], default: pessoal }
+        risco: { type: string, enum: [RSP, FFC], default: RSP, description: 'Dono do risco: RSP (Respawn) ou FFC (Fundo Financeiro).' }
         valor: { type: number, description: Valor pedido. Padrão por produto. }
         prazo: { type: integer, description: Em meses. Padrão por produto. }
         taxaMensal: { type: number, description: '% ao mês (padrão: a taxa do produto).', example: 5 }
@@ -1554,6 +1592,9 @@ components:
         clienteId: { type: string }
         clienteNome: { type: string }
         produto: { type: string }
+        tipo: { type: string, example: EMP_RSP, description: SIGLA_RISCO. }
+        risco: { type: string, enum: [RSP, FFC] }
+        razaoEspecial: { type: [string, 'null'], example: E, description: Nula em contrato antigo. }
         valor: { type: number }
         prazo: { type: integer }
         dataContratacao: { type: string, format: date }
@@ -1647,7 +1688,10 @@ components:
         clienteId: { type: string, maxLength: 11 }
         clienteNome: { type: string, maxLength: 120 }
         produto: { type: string, enum: [pessoal, consignado, veiculo, imovel, pix] }
-        numeroContrato: { type: string, pattern: '^[0-9]{13}$', example: '1010000026001', description: 'Na tela: 101.0000026.001.' }
+        sigla: { type: string, enum: [EMP, CSG, CGV, CGI, PXP], description: Sigla do produto no catálogo. }
+        risco: { type: string, enum: [RSP, FFC], description: 'Dono do risco. Contrato antigo sem o campo é RSP.' }
+        razaoEspecial: { type: string, enum: [E, F, C, D, G, H, I, J, P, Q], description: Uma letra por tipo SIGLA_RISCO. }
+        numeroContrato: { type: string, pattern: '^[0-9]{13}$', example: '1010000026001', description: 'Na tela: 101.0000026.001. O 1º dígito é o risco (1 RSP, 2 FFC).' }
         sequencia: { type: integer, minimum: 1, maximum: 999 }
         detalhes: { $ref: '#/components/schemas/Detalhes' }
         valor: { type: number, exclusiveMinimum: 0, maximum: 2100000 }

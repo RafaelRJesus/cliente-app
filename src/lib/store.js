@@ -75,6 +75,7 @@ function proximoContratoLocal(contrato) {
     contrato.produto,
     cliente?.numero,
     sequencia,
+    contrato.risco,
   )
   localStorage.setItem(
     'cliente-app:clientes',

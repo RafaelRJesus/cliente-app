@@ -62,6 +62,21 @@ test('contrato recebe número PPP + cliente + sequência', async ({ page }) => {
   await expect(page.locator('tbody')).toContainText('105.0000001.002')
 })
 
+test('risco Fundo Financeiro troca o 1º dígito do número e aparece no tipo', async ({
+  page,
+}) => {
+  await cadastrarCliente(page, 'Ana Teste', '11144477735')
+  await page.goto('/simulador')
+  await page.getByRole('tab', { name: 'Pix parcelado' }).click()
+  await escolherCliente(page, '111.444.777-35', 'Ana Teste')
+  await expect(page.getByLabel('Risco')).toHaveValue('RSP')
+  await page.getByLabel('Risco').selectOption('FFC')
+  await expect(page.locator('.resume')).toContainText('PXP_FFC · razão especial Q')
+  await page.getByRole('button', { name: 'Contratar' }).click()
+  await expect(page.locator('.page-header')).toContainText('205.0000001.001')
+  await expect(page.locator('.page-header')).toContainText('PXP_FFC')
+})
+
 test('simulador acha o cliente por nome completo, CPF ou número', async ({ page }) => {
   await cadastrarCliente(page, 'Ana Teste', '11144477735')
   await cadastrarCliente(page, 'João Álvares Lima', '52998224725')

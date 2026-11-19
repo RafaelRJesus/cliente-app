@@ -1,5 +1,6 @@
 import { Link, useNavigate } from 'react-router-dom'
 import { formatDate, formatMoney } from '../lib/format'
+import { tipoDoContrato } from '../lib/catalogo'
 import { formatarNumeroContrato } from '../lib/numeroContrato'
 import { nomeProduto } from '../lib/produtos'
 import { StatusBadge } from './StatusBadge'
@@ -43,7 +44,9 @@ export function TabelaContratos({ linhas, mostrarCliente = true }) {
                   </Link>
                 </td>
               )}
-              <td>{nomeProduto(c)}</td>
+              <td>
+                {nomeProduto(c)} <span className="muted small">{tipoDoContrato(c)}</span>
+              </td>
               <td>{formatDate(c.dataContratacao)}</td>
               <td>
                 {c.sistema} · {c.prazo}x

@@ -19,6 +19,7 @@ import {
   where,
 } from 'firebase/firestore'
 import { afterAll, beforeAll, beforeEach, describe, it } from 'vitest'
+import { classificarContrato, prefixoDoContrato } from '../src/lib/catalogo.js'
 
 let env
 const agora = '2026-11-13T12:00:00.000Z'
@@ -63,6 +64,11 @@ const contrato = (clienteId, criadoPor, extra = {}) => ({
   parcelas: [parcela(1), parcela(2), parcela(3)],
   criadoEm: agora,
   criadoPor,
+  // classificação do catálogo; o teste pode sobrescrever campo a campo
+  ...classificarContrato(
+    extra.produto ?? 'pessoal',
+    ['RSP', 'FFC'].includes(extra.risco) ? extra.risco : 'RSP',
+  ),
   ...extra,
 })
 
@@ -89,22 +95,19 @@ function cadastrar(db, caminho, dados, numero = 3) {
 // Contrata como o app: avança o contador do cliente e grava o contrato com
 // o número PPP + CCCCCCC + SSS na mesma transação.
 function contratar(db, clienteId, numeroCliente, sequencia = 1, extra = {}) {
-  const prefixo = {
-    pessoal: '101',
-    consignado: '102',
-    veiculo: '103',
-    imovel: '104',
-    pix: '105',
-  }
-  const dados = { ...contrato(clienteId, 'gestor'), ...extra }
+  const dados = contrato(clienteId, 'gestor', extra)
   const numeroContrato =
-    prefixo[dados.produto] +
+    (extra.prefixo ?? prefixoDoContrato(dados.produto, dados.risco)) +
     String(numeroCliente).padStart(7, '0') +
     String(sequencia).padStart(3, '0')
   const lote = writeBatch(db)
   lote.update(doc(db, `clientes/${clienteId}`), { ultimoContrato: sequencia })
   const ref = doc(collection(db, 'contratos'))
-  lote.set(ref, { ...dados, numeroContrato, sequencia, ...extra })
+  delete dados.prefixo
+  // campo undefined = campo ausente (o SDK recusa undefined antes das regras)
+  for (const campo of Object.keys(dados))
+    if (dados[campo] === undefined) delete dados[campo]
+  lote.set(ref, { ...dados, numeroContrato, sequencia })
   return lote.commit().then(() => ref)
 }
 
@@ -421,6 +424,43 @@ describe('número do contrato', () => {
       sequencia: 1,
     })
     await assertFails(lote.commit())
+  })
+
+  it('risco Fundo Financeiro usa o prefixo 2xx', async () => {
+    await assertSucceeds(
+      contratar(gestor(), CPF_JOAO, 2, 1, { produto: 'pix', risco: 'FFC' }),
+    )
+  })
+
+  it('o 1º dígito do número tem de ser o do risco', async () => {
+    await assertFails(
+      contratar(gestor(), CPF_JOAO, 2, 1, { risco: 'FFC', prefixo: '101' }),
+    )
+    await assertFails(contratar(gestor(), CPF_JOAO, 2, 1, { prefixo: '201' }))
+  })
+
+  it('sigla, risco e razão especial têm de ser os do catálogo', async () => {
+    await assertFails(contratar(gestor(), CPF_JOAO, 2, 1, { sigla: 'PXP' }))
+    await assertFails(contratar(gestor(), CPF_JOAO, 2, 1, { razaoEspecial: 'F' }))
+    await assertFails(
+      contratar(gestor(), CPF_JOAO, 2, 1, {
+        risco: 'CPR',
+        sigla: 'EMP',
+        razaoEspecial: 'E',
+        prefixo: '301',
+      }),
+    )
+  })
+
+  it('contrato novo sem os campos do catálogo é recusado', async () => {
+    await assertFails(
+      contratar(gestor(), CPF_JOAO, 2, 1, {
+        sigla: undefined,
+        risco: undefined,
+        razaoEspecial: undefined,
+        prefixo: '101',
+      }),
+    )
   })
 
   it('número do cliente no meio tem de ser o dele', async () => {

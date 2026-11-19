@@ -13,7 +13,12 @@ export async function gravarContratoNumerado(dados) {
     if (!cliente.exists()) throw new Error('Cliente não encontrado.')
     const { numero, ultimoContrato = 0 } = cliente.data()
     const sequencia = ultimoContrato + 1
-    const numeroContrato = montarNumeroContrato(dados.produto, numero, sequencia)
+    const numeroContrato = montarNumeroContrato(
+      dados.produto,
+      numero,
+      sequencia,
+      dados.risco,
+    )
     tx.update(clienteRef, { ultimoContrato: sequencia })
     const gravado = { ...dados, numeroContrato, sequencia }
     tx.set(contratoRef, gravado)

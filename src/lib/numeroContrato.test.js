@@ -1,4 +1,3 @@
-import { readFileSync } from 'node:fs'
 import { describe, expect, it, vi } from 'vitest'
 
 vi.mock('./firebase', () => ({ db: {} }))
@@ -26,13 +25,19 @@ describe('número do contrato', () => {
     expect(formatarNumeroContrato({ id: 'abcdefgh123' })).toBe('ABCDEFGH')
   })
 
-  it('prefixos do app e das regras do Firestore são os mesmos', () => {
-    const regras = readFileSync(new URL('../../firestore.rules', import.meta.url), 'utf8')
-    const mapa = Object.fromEntries(
-      [...regras.match(/let prefixo = \{([^}]*)\}/)[1].matchAll(/'(\w+)': (\d+)/g)].map(
-        (m) => [m[1], m[2]],
-      ),
-    )
-    expect(mapa).toEqual(PREFIXOS)
+  it('o risco FFC troca só o 1º dígito do número', () => {
+    expect(montarNumeroContrato('pessoal', 25, 3, 'FFC')).toBe('2010000025003')
+    expect(montarNumeroContrato('pix', 25, 3, 'RSP')).toBe('1050000025003')
+    expect(() => montarNumeroContrato('pessoal', 25, 3, 'CPR')).toThrow('Risco inválido')
+  })
+
+  it('prefixos padrão (RSP) continuam 101 a 105', () => {
+    expect(PREFIXOS).toEqual({
+      pessoal: '101',
+      consignado: '102',
+      veiculo: '103',
+      imovel: '104',
+      pix: '105',
+    })
   })
 })
